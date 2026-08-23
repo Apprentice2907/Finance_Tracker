@@ -1,0 +1,16 @@
+# Environments
+venv/
+env/
+.env
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+finance.db
+
+# IDEs
+.vscode/
+.idea/
