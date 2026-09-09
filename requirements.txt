@@ -1,0 +1,7 @@
+# Core Application Dependencies
+flet>=0.86.0
+openpyxl>=3.1.2
+matplotlib>=3.8.0
+
+# Performance & Benchmarking
+psutil>=5.9.0

@@ -1,0 +1,34 @@
+{
+  "100k": {
+    "database": "transactions_100k.db",
+    "like_search": {
+      "p50_ms": 0.238,
+      "p95_ms": 0.433,
+      "p99_ms": 0.655,
+      "throughput_ops_sec": 3702.1
+    },
+    "fts5_search": {
+      "p50_ms": 0.283,
+      "p95_ms": 1.052,
+      "p99_ms": 1.153,
+      "throughput_ops_sec": 2445.9
+    },
+    "speedup_factor": 0.84
+  },
+  "1m": {
+    "database": "transactions_1m.db",
+    "like_search": {
+      "p50_ms": 0.303,
+      "p95_ms": 0.466,
+      "p99_ms": 0.584,
+      "throughput_ops_sec": 3120.6
+    },
+    "fts5_search": {
+      "p50_ms": 0.817,
+      "p95_ms": 1.23,
+      "p99_ms": 1.476,
+      "throughput_ops_sec": 1194.9
+    },
+    "speedup_factor": 0.37
+  }
+}

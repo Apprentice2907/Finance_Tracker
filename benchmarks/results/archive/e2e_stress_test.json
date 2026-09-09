@@ -1,0 +1,20 @@
+{
+  "database": "D:\\Finance Tracker\\benchmarks\\datasets\\transactions_100k.db",
+  "db_size_mb": 61.67,
+  "iterations": 30,
+  "metrics": {
+    "dashboard_avg_ms": 0.151,
+    "category_breakdown_avg_ms": 0.047,
+    "search_pagination_avg_ms": 1.609,
+    "health_check_ms": 1617.902,
+    "backup_creation_ms": 15.938,
+    "hardened_restore_ms": 73.427,
+    "aggregate_rebuild_ms": 249.315
+  },
+  "errors": [],
+  "health_status": "PASS",
+  "is_consistent": true,
+  "restore_success": true,
+  "rebuild_success": true,
+  "process_rss_mb": 22.92
+}

@@ -1,0 +1,32 @@
+{
+  "10k": {
+    "rows": 10000,
+    "standard_export": {
+      "time_sec": 2.935,
+      "throughput_rows_sec": 3407.0,
+      "peak_ram_mb": 17.14,
+      "file_size_kb": 347.8
+    },
+    "streaming_export": {
+      "time_sec": 2.314,
+      "throughput_rows_sec": 4322.4,
+      "peak_ram_mb": 0.43,
+      "file_size_kb": 347.7
+    }
+  },
+  "50k": {
+    "rows": 50000,
+    "standard_export": {
+      "time_sec": 15.368,
+      "throughput_rows_sec": 3253.5,
+      "peak_ram_mb": 84.3,
+      "file_size_kb": 1715.7
+    },
+    "streaming_export": {
+      "time_sec": 11.524,
+      "throughput_rows_sec": 4338.8,
+      "peak_ram_mb": 0.4,
+      "file_size_kb": 1715.7
+    }
+  }
+}

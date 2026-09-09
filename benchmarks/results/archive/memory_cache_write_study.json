@@ -1,0 +1,103 @@
+{
+  "memory_scaling": {
+    "10k": {
+      "db_size_mb": 7.54,
+      "process_rss_baseline_mb": 19.8,
+      "rss_after_dashboard_mb": 21.02,
+      "delta_rss_mb": 1.23,
+      "memory_growth": "Sub-linear / Constant O(1) Working Set"
+    },
+    "100k": {
+      "db_size_mb": 61.67,
+      "process_rss_baseline_mb": 20.81,
+      "rss_after_dashboard_mb": 21.65,
+      "delta_rss_mb": 0.84,
+      "memory_growth": "Sub-linear / Constant O(1) Working Set"
+    },
+    "1m": {
+      "db_size_mb": 206.88,
+      "process_rss_baseline_mb": 20.91,
+      "rss_after_dashboard_mb": 22.66,
+      "delta_rss_mb": 1.75,
+      "memory_growth": "Sub-linear / Constant O(1) Working Set"
+    }
+  },
+  "cache_sensitivity": {
+    "cache_disabled": {
+      "total_requests": 2000,
+      "total_time_ms": 5213.67,
+      "avg_latency_ms": 2.6068,
+      "hit_rate_percent": 0.0
+    },
+    "capacity_10": {
+      "capacity": 10,
+      "hits": 1812,
+      "misses": 188,
+      "hit_rate_percent": 90.6,
+      "total_time_ms": 369.39,
+      "avg_latency_ms": 0.1847,
+      "speedup_vs_disabled": 14.11
+    },
+    "capacity_50": {
+      "capacity": 50,
+      "hits": 1982,
+      "misses": 18,
+      "hit_rate_percent": 99.1,
+      "total_time_ms": 35.45,
+      "avg_latency_ms": 0.01772,
+      "speedup_vs_disabled": 147.08
+    },
+    "capacity_100": {
+      "capacity": 100,
+      "hits": 1982,
+      "misses": 18,
+      "hit_rate_percent": 99.1,
+      "total_time_ms": 35.96,
+      "avg_latency_ms": 0.01798,
+      "speedup_vs_disabled": 144.97
+    },
+    "capacity_500": {
+      "capacity": 500,
+      "hits": 1982,
+      "misses": 18,
+      "hit_rate_percent": 99.1,
+      "total_time_ms": 37.24,
+      "avg_latency_ms": 0.01862,
+      "speedup_vs_disabled": 139.98
+    }
+  },
+  "write_amplification": {
+    "insert_count_1": {
+      "count": 1,
+      "no_triggers_ms": 0.433,
+      "with_triggers_ms": 0.142,
+      "write_overhead_percent": -67.3,
+      "db_size_no_trig_kb": 4.0,
+      "db_size_with_trig_kb": 4.0
+    },
+    "insert_count_100": {
+      "count": 100,
+      "no_triggers_ms": 0.122,
+      "with_triggers_ms": 0.237,
+      "write_overhead_percent": 94.6,
+      "db_size_no_trig_kb": 4.0,
+      "db_size_with_trig_kb": 4.0
+    },
+    "insert_count_1000": {
+      "count": 1000,
+      "no_triggers_ms": 1.139,
+      "with_triggers_ms": 2.121,
+      "write_overhead_percent": 86.1,
+      "db_size_no_trig_kb": 4.0,
+      "db_size_with_trig_kb": 4.0
+    },
+    "insert_count_10000": {
+      "count": 10000,
+      "no_triggers_ms": 10.117,
+      "with_triggers_ms": 18.514,
+      "write_overhead_percent": 83.0,
+      "db_size_no_trig_kb": 4.0,
+      "db_size_with_trig_kb": 4.0
+    }
+  }
+}

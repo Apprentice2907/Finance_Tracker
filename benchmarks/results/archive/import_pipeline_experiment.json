@@ -1,0 +1,59 @@
+{
+  "single_threaded": {
+    "mode": "single_threaded",
+    "rows": 30000,
+    "elapsed_sec": 3.1883,
+    "throughput_rows_sec": 9409.4,
+    "peak_ram_mb": 0.03
+  },
+  "queue_1": {
+    "mode": "producer_consumer_q1",
+    "queue_capacity": 1,
+    "rows": 30000,
+    "elapsed_sec": 4.0781,
+    "throughput_rows_sec": 7356.4,
+    "peak_ram_mb": 0.05,
+    "producer_blocked_wait_sec": 3.4891,
+    "consumer_idle_wait_sec": 0.0011
+  },
+  "queue_4": {
+    "mode": "producer_consumer_q4",
+    "queue_capacity": 4,
+    "rows": 30000,
+    "elapsed_sec": 4.432,
+    "throughput_rows_sec": 6769.0,
+    "peak_ram_mb": 0.1,
+    "producer_blocked_wait_sec": 2.9199,
+    "consumer_idle_wait_sec": 0.001
+  },
+  "queue_8": {
+    "mode": "producer_consumer_q8",
+    "queue_capacity": 8,
+    "rows": 30000,
+    "elapsed_sec": 4.4425,
+    "throughput_rows_sec": 6752.9,
+    "peak_ram_mb": 0.16,
+    "producer_blocked_wait_sec": 1.7477,
+    "consumer_idle_wait_sec": 0.0008
+  },
+  "queue_16": {
+    "mode": "producer_consumer_q16",
+    "queue_capacity": 16,
+    "rows": 30000,
+    "elapsed_sec": 4.5325,
+    "throughput_rows_sec": 6618.8,
+    "peak_ram_mb": 0.24,
+    "producer_blocked_wait_sec": 0.0003,
+    "consumer_idle_wait_sec": 0.0004
+  },
+  "queue_32": {
+    "mode": "producer_consumer_q32",
+    "queue_capacity": 32,
+    "rows": 30000,
+    "elapsed_sec": 4.6961,
+    "throughput_rows_sec": 6388.3,
+    "peak_ram_mb": 0.24,
+    "producer_blocked_wait_sec": 0.0004,
+    "consumer_idle_wait_sec": 0.0003
+  }
+}

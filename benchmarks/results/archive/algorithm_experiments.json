@@ -1,0 +1,81 @@
+{
+  "top_k": {
+    "category_domain_N15": {
+      "K=3": {
+        "full_sort_ms": 0.000896,
+        "heap_top_k_ms": 0.001759,
+        "ratio_sort_to_heap": 0.509,
+        "faster": "Full Sort"
+      },
+      "K=5": {
+        "full_sort_ms": 0.000819,
+        "heap_top_k_ms": 0.002021,
+        "ratio_sort_to_heap": 0.405,
+        "faster": "Full Sort"
+      },
+      "K=10": {
+        "full_sort_ms": 0.000822,
+        "heap_top_k_ms": 0.002428,
+        "ratio_sort_to_heap": 0.338,
+        "faster": "Full Sort"
+      }
+    },
+    "high_cardinality": {
+      "N=100000": {
+        "K=3": {
+          "full_sort_ms": 13.545,
+          "heap_top_k_ms": 1.079,
+          "speedup_factor": 12.56
+        },
+        "K=5": {
+          "full_sort_ms": 13.732,
+          "heap_top_k_ms": 1.348,
+          "speedup_factor": 10.19
+        },
+        "K=10": {
+          "full_sort_ms": 12.927,
+          "heap_top_k_ms": 1.579,
+          "speedup_factor": 8.18
+        }
+      },
+      "N=1000000": {
+        "K=3": {
+          "full_sort_ms": 211.428,
+          "heap_top_k_ms": 18.084,
+          "speedup_factor": 11.69
+        },
+        "K=5": {
+          "full_sort_ms": 198.585,
+          "heap_top_k_ms": 13.494,
+          "speedup_factor": 14.72
+        },
+        "K=10": {
+          "full_sort_ms": 206.004,
+          "heap_top_k_ms": 12.337,
+          "speedup_factor": 16.7
+        }
+      },
+      "N=5000000": {
+        "K=3": {
+          "full_sort_ms": 1233.72,
+          "heap_top_k_ms": 75.499,
+          "speedup_factor": 16.34
+        },
+        "K=5": {
+          "full_sort_ms": 1328.05,
+          "heap_top_k_ms": 61.47,
+          "speedup_factor": 21.6
+        },
+        "K=10": {
+          "full_sort_ms": 1206.078,
+          "heap_top_k_ms": 65.217,
+          "speedup_factor": 18.49
+        }
+      }
+    }
+  },
+  "aggregation": {
+    "dict_aggregation_ms": 246.09,
+    "sort_scan_aggregation_ms": 531.76
+  }
+}

@@ -1,16 +1,39 @@
 # Environments
 venv/
+.venv/
 env/
 .env
+
+# Flet & app cache
+.flet/
 
 # Python caches
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+dist/
+build/
 
-# Database
+# Local databases & testing artifacts
+*.db
 finance.db
+finance_test.db
+finance_bench_*.db
+*.db-wal
+*.db-shm
+*.bak
+*.tmp
 
-# IDEs
+# Generated benchmark & temporary files
+benchmarks/datasets/*.db
+benchmarks/datasets/*.xlsx
+benchmarks/datasets/*.csv
+*.xlsx
+*.csv
+
+# IDEs & OS files
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
