@@ -41,7 +41,7 @@ def reports_view(page: ft.Page):
         s, e, _ = current_dates()
         return get_previous_period_dates(state["period_key"], s, e)
 
-    def period_dropdown():
+    def period_dropdown(full_width=False):
         options = [ft.dropdown.Option(k, v) for k, v in PERIOD_OPTIONS]
         mob = is_mobile(page)
         def on_change(e):
@@ -57,11 +57,12 @@ def reports_view(page: ft.Page):
             value=state["period_key"],
             options=options,
             on_select=on_change,
-            width=135 if mob else 170,
+            width=None if full_width else (135 if mob else 170),
             text_size=12 if mob else 13,
             dense=True,
             border_color=BORDER,
             border_radius=8,
+            expand=True if full_width else False,
             content_padding=padding_box(10, 6) if mob else padding_box(12, 8)
         )
 
@@ -127,10 +128,10 @@ def reports_view(page: ft.Page):
                         ft.Row([
                             ft.Row([
                                 ft.Container(width=8, height=8, bgcolor=cat_color, border_radius=4),
-                                ft.Text(name, size=13, color=TEXT, weight=ft.FontWeight.W_500),
-                                ft.Text(f"({count} txns)", size=11, color=MUTED),
-                            ], spacing=6),
-                            ft.Text(f"{format_currency(val)} ({ratio:.1%})", size=12, color=TEXT, weight=ft.FontWeight.BOLD),
+                                ft.Text(name, size=13, color=TEXT, weight=ft.FontWeight.W_500, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
+                                ft.Text(f"({count} txns)", size=11, color=MUTED, no_wrap=True),
+                            ], spacing=6, expand=True),
+                            ft.Text(f"{format_currency(val)} ({ratio:.1%})", size=12, color=TEXT, weight=ft.FontWeight.BOLD, no_wrap=True),
                         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                         ft.ProgressBar(value=ratio, color=cat_color, bgcolor="#EEF1F6", height=5, border_radius=3)
                     ], spacing=6),
@@ -157,26 +158,45 @@ def reports_view(page: ft.Page):
         mobile = is_mobile(page)
 
         # Header
-        header = ft.Row([
-            ft.Column([
-                ft.Text("Financial Reports", size=20 if mobile else 22, weight=ft.FontWeight.BOLD, color=TEXT),
-                ft.Text(f"Analytical overview · {human_label}", color=MUTED, size=12),
-            ], spacing=2),
-            period_dropdown()
-        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+        from utils.responsive import get_page_width
+        w = get_page_width(page)
+        if mobile and w < 420:
+            header = ft.Column([
+                ft.Column([
+                    ft.Text("Financial Reports", size=20, weight=ft.FontWeight.BOLD, color=TEXT),
+                    ft.Text(f"Analytical overview · {human_label}", color=MUTED, size=12),
+                ], spacing=2),
+                period_dropdown(full_width=True)
+            ], spacing=8)
+        else:
+            header = ft.Row([
+                ft.Column([
+                    ft.Text("Financial Reports", size=20 if mobile else 22, weight=ft.FontWeight.BOLD, color=TEXT),
+                    ft.Text(f"Analytical overview · {human_label}", color=MUTED, size=12),
+                ], spacing=2),
+                period_dropdown(full_width=False)
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
         # Metrics grid
         if mobile:
-            metrics_grid = ft.Column([
-                ft.Row([
+            if w < 360:
+                metrics_grid = ft.Column([
                     metric_card("Total Income", inc, p_inc, GREEN, ft.Icons.SOUTH_WEST_ROUNDED),
                     metric_card("Total Expenses", exp, p_exp, RED, ft.Icons.NORTH_EAST_ROUNDED),
-                ], spacing=10),
-                ft.Row([
                     metric_card("Net Savings", net, p_net, GREEN if net >= 0 else RED, ft.Icons.ACCOUNT_BALANCE_WALLET_OUTLINED),
                     metric_card("Savings Rate", max(-100.0, min(100.0, savings_rate)), 0, BLUE, ft.Icons.PIE_CHART_OUTLINE, is_currency=False, subtitle="of total income"),
+                ], spacing=8)
+            else:
+                metrics_grid = ft.Column([
+                    ft.Row([
+                        metric_card("Total Income", inc, p_inc, GREEN, ft.Icons.SOUTH_WEST_ROUNDED),
+                        metric_card("Total Expenses", exp, p_exp, RED, ft.Icons.NORTH_EAST_ROUNDED),
+                    ], spacing=10),
+                    ft.Row([
+                        metric_card("Net Savings", net, p_net, GREEN if net >= 0 else RED, ft.Icons.ACCOUNT_BALANCE_WALLET_OUTLINED),
+                        metric_card("Savings Rate", max(-100.0, min(100.0, savings_rate)), 0, BLUE, ft.Icons.PIE_CHART_OUTLINE, is_currency=False, subtitle="of total income"),
+                    ], spacing=10)
                 ], spacing=10)
-            ], spacing=10)
         else:
             metrics_grid = ft.Row([
                 metric_card("Total Income", inc, p_inc, GREEN, ft.Icons.SOUTH_WEST_ROUNDED),
@@ -234,6 +254,6 @@ def reports_view(page: ft.Page):
 
     refresh()
 
-    pad_h = 16 if is_mobile(page) else 28
-    pad_v = 16 if is_mobile(page) else 24
+    pad_h = 12 if is_mobile(page) else 28
+    pad_v = 14 if is_mobile(page) else 24
     return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)

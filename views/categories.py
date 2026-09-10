@@ -205,19 +205,19 @@ def categories_view(page: ft.Page):
                         ft.Row([
                             ft.Row([
                                 ft.Container(width=10, height=10, bgcolor=col, border_radius=5),
-                                ft.Text(cname, size=13, weight=ft.FontWeight.W_500, color=TEXT),
-                            ], spacing=8),
+                                ft.Text(cname, size=13, weight=ft.FontWeight.W_500, color=TEXT, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
+                            ], spacing=8, expand=True),
                             ft.Row([
                                 ft.IconButton(
                                     ft.Icons.EDIT_OUTLINED,
-                                    icon_size=16,
+                                    icon_size=15 if mobile else 16,
                                     icon_color=MUTED,
                                     tooltip="Edit Category",
                                     on_click=lambda _, val=c: start_edit(val)
                                 ),
                                 ft.IconButton(
                                     ft.Icons.DELETE_OUTLINE,
-                                    icon_size=16,
+                                    icon_size=15 if mobile else 16,
                                     icon_color=RED,
                                     tooltip="Delete Category",
                                     on_click=lambda _, tid=cid, name=cname: handle_delete(tid, name)
@@ -269,6 +269,6 @@ def categories_view(page: ft.Page):
 
     refresh()
 
-    pad_h = 16 if is_mobile(page) else 28
-    pad_v = 16 if is_mobile(page) else 24
+    pad_h = 12 if is_mobile(page) else 28
+    pad_v = 14 if is_mobile(page) else 24
     return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)

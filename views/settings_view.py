@@ -332,6 +332,6 @@ def settings_view(page: ft.Page, on_data_restored_callback=None):
         about_card,
     ]
 
-    pad_h = 16 if mobile else 28
-    pad_v = 16 if mobile else 24
+    pad_h = 12 if mobile else 28
+    pad_v = 14 if mobile else 24
     return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)

@@ -415,6 +415,6 @@ def accounts_view(page: ft.Page):
 
     render()
     
-    pad_h = 16 if is_mobile(page) else 28
-    pad_v = 16 if is_mobile(page) else 24
+    pad_h = 12 if is_mobile(page) else 28
+    pad_v = 14 if is_mobile(page) else 24
     return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)

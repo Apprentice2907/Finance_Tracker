@@ -49,7 +49,7 @@ def dashboard_view(page: ft.Page, on_navigate=None):
         s, e, _ = current_dates()
         return get_previous_period_dates(state["period_key"], s, e)
 
-    def period_dropdown():
+    def period_dropdown(full_width=False):
         options = [ft.dropdown.Option(k, v) for k, v in PERIOD_OPTIONS]
         def on_change(e):
             val = e.control.value
@@ -66,15 +66,17 @@ def dashboard_view(page: ft.Page, on_navigate=None):
                 value=state["period_key"],
                 options=options,
                 on_select=on_change,
-                width=135 if mob else 170,
+                width=None if full_width else (135 if mob else 170),
                 text_size=12 if mob else 13,
                 dense=True,
                 border_color=BORDER,
                 border_radius=8,
+                expand=True if full_width else False,
                 content_padding=padding_box(10, 6) if mob else padding_box(12, 8)
             ),
             bgcolor=CARD,
-            border_radius=8
+            border_radius=8,
+            expand=True if full_width else False
         )
 
     def apply_custom_range(start_d, end_d):
@@ -116,38 +118,38 @@ def dashboard_view(page: ft.Page, on_navigate=None):
 
         sub_items = []
         if change_text == "No prior data":
-            sub_items.append(ft.Icon(ft.Icons.REMOVE_ROUNDED, size=11, color=MUTED))
-            sub_items.append(ft.Text("No prior data", size=10 if mob else 11, color=MUTED, weight=ft.FontWeight.W_500, no_wrap=True))
+            sub_items.append(ft.Icon(ft.Icons.REMOVE_ROUNDED, size=12, color=MUTED))
+            sub_items.append(ft.Text("No prior data", size=11, color=MUTED, weight=ft.FontWeight.W_500))
         elif change_text == "New activity":
-            sub_items.append(ft.Icon(ft.Icons.TRENDING_FLAT, size=11, color=BLUE))
-            sub_items.append(ft.Text("New activity", size=10 if mob else 11, color=BLUE, weight=ft.FontWeight.W_500, no_wrap=True))
+            sub_items.append(ft.Icon(ft.Icons.TRENDING_FLAT, size=12, color=BLUE))
+            sub_items.append(ft.Text("New activity", size=11, color=BLUE, weight=ft.FontWeight.W_500))
         else:
-            sub_items.append(ft.Icon(change_icon, size=11 if mob else 13, color=change_color))
-            sub_items.append(ft.Text(change_text, size=10 if mob else 11, color=change_color, weight=ft.FontWeight.W_500, no_wrap=True))
-            sub_items.append(ft.Text(previous_dates()[2], size=10 if mob else 11, color=MUTED, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS))
+            sub_items.append(ft.Icon(change_icon, size=13, color=change_color))
+            sub_items.append(ft.Text(change_text, size=11, color=change_color, weight=ft.FontWeight.W_500))
+            sub_items.append(ft.Text(previous_dates()[2], size=11, color=MUTED))
 
         return make_card(
             ft.Column([
                 ft.Row([
-                    ft.Text(title, size=11 if mob else 13, color=MUTED, weight=ft.FontWeight.W_500, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
+                    ft.Text(title, size=12 if mob else 13, color=MUTED, weight=ft.FontWeight.W_500, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
                     ft.Container(
-                        ft.Icon(icon, color=color, size=13 if mob else 16),
+                        ft.Icon(icon, color=color, size=15 if mob else 16),
                         bgcolor=soft_color(color),
-                        padding=4 if mob else 6,
-                        border_radius=7
+                        padding=5 if mob else 6,
+                        border_radius=8
                     )
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 ft.Text(
                     format_currency(value),
-                    size=17 if mob and not is_main else (22 if not is_main else 24),
+                    size=20 if mob and not is_main else (22 if not is_main else 24),
                     weight=ft.FontWeight.BOLD,
                     color=TEXT,
                     no_wrap=True
                 ),
-                ft.Row(sub_items, spacing=3, vertical_alignment=ft.CrossAxisAlignment.CENTER)
-            ], spacing=4 if mob else 6),
-            padding=padding_box(12, 10) if mob else 18,
-            expand=1
+                ft.Row(sub_items, spacing=4, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+            ], spacing=6),
+            padding=14 if mob else 18,
+            expand=1 if not mob else None
         )
 
     def top_categories_widget(start_date, end_date):
@@ -166,9 +168,9 @@ def dashboard_view(page: ft.Page, on_navigate=None):
                     ft.Row([
                         ft.Row([
                             ft.Container(width=8, height=8, bgcolor=cat_color, border_radius=4),
-                            ft.Text(name, size=12, color=TEXT, weight=ft.FontWeight.W_500),
-                        ], spacing=8),
-                        ft.Text(f"{format_currency(val)} · {pct:.0%}", size=12, color=MUTED),
+                            ft.Text(name, size=12, color=TEXT, weight=ft.FontWeight.W_500, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
+                        ], spacing=8, expand=True),
+                        ft.Text(f"{format_currency(val)} · {pct:.0%}", size=12, color=MUTED, no_wrap=True),
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     padding=padding_box(vertical=3)
                 )
@@ -217,34 +219,35 @@ def dashboard_view(page: ft.Page, on_navigate=None):
                 ft.Container(
                     ft.Row([
                         ft.Container(
-                            ft.Icon(icon_name, size=16, color=icon_col),
+                            ft.Icon(icon_name, size=15 if mobile else 16, color=icon_col),
                             bgcolor=soft_color(icon_col),
-                            padding=8,
+                            padding=6 if mobile else 8,
                             border_radius=8
                         ),
                         ft.Column([
                             ft.Row([
-                                ft.Container(width=7, height=7, bgcolor=t_color, border_radius=4),
-                                ft.Text(display_title, weight=ft.FontWeight.W_600, color=TEXT, size=13),
+                                ft.Container(width=6 if mobile else 7, height=6 if mobile else 7, bgcolor=t_color, border_radius=4),
+                                ft.Text(display_title, weight=ft.FontWeight.W_600, color=TEXT, size=12 if mobile else 13, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
                             ], spacing=6),
-                            ft.Text(subtitle_text, size=11, color=MUTED, no_wrap=True, max_lines=1),
+                            ft.Text(subtitle_text, size=10 if mobile else 11, color=MUTED, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
                         ], spacing=2, expand=True),
                         ft.Text(
                             ("+ " if is_inc else "− ") + format_currency(t_amt),
                             color=icon_col,
                             weight=ft.FontWeight.BOLD,
-                            size=13
+                            size=12 if mobile else 13,
+                            no_wrap=True
                         ),
                         ft.IconButton(
                             ft.Icons.EDIT_OUTLINED,
-                            icon_size=16,
+                            icon_size=15 if mobile else 16,
                             icon_color=MUTED,
                             tooltip="Edit",
                             on_click=lambda _, r=row: open_transaction_dialog(page, refresh, r)
                         ),
                         ft.IconButton(
                             ft.Icons.DELETE_OUTLINE,
-                            icon_size=16,
+                            icon_size=15 if mobile else 16,
                             icon_color=RED,
                             tooltip="Delete",
                             on_click=lambda _, tid=t_id: (delete_transaction(tid), refresh())
@@ -311,23 +314,31 @@ def dashboard_view(page: ft.Page, on_navigate=None):
         mobile = is_mobile(page)
 
         # Header Row
-        header_controls = [
-            ft.Column([
-                ft.Text("Dashboard", size=20 if mobile else 22, weight=ft.FontWeight.BOLD, color=TEXT),
-                ft.Text(human_label, color=MUTED, size=12 if mobile else 13),
-            ], spacing=2),
-            period_dropdown(),
-        ]
-        header = ft.Row(header_controls, alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+        from utils.responsive import get_page_width
+        w = get_page_width(page)
+        if mobile and w < 420:
+            header = ft.Column([
+                ft.Row([
+                    ft.Text("Dashboard", size=20, weight=ft.FontWeight.BOLD, color=TEXT),
+                    ft.Text(human_label, color=MUTED, size=12),
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                period_dropdown(full_width=True)
+            ], spacing=8)
+        else:
+            header = ft.Row([
+                ft.Column([
+                    ft.Text("Dashboard", size=20 if mobile else 22, weight=ft.FontWeight.BOLD, color=TEXT),
+                    ft.Text(human_label, color=MUTED, size=12 if mobile else 13),
+                ], spacing=2),
+                period_dropdown(full_width=False)
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
         # Summary Cards
         if mobile:
             summary_section = ft.Column([
                 summary_card("Net Balance", cur_net, prev_net, GREEN if cur_net >= 0 else RED, ft.Icons.ACCOUNT_BALANCE_WALLET_OUTLINED, is_main=True),
-                ft.Row([
-                    summary_card("Income", cur_inc, prev_inc, GREEN, ft.Icons.SOUTH_WEST_ROUNDED),
-                    summary_card("Expenses", cur_exp, prev_exp, RED, ft.Icons.NORTH_EAST_ROUNDED),
-                ], spacing=10)
+                summary_card("Total Income", cur_inc, prev_inc, GREEN, ft.Icons.SOUTH_WEST_ROUNDED),
+                summary_card("Total Expenses", cur_exp, prev_exp, RED, ft.Icons.NORTH_EAST_ROUNDED),
             ], spacing=10)
         else:
             summary_section = ft.Row([
@@ -476,6 +487,6 @@ def dashboard_view(page: ft.Page, on_navigate=None):
 
     refresh()
     
-    pad_h = 16 if is_mobile(page) else 28
-    pad_v = 16 if is_mobile(page) else 24
+    pad_h = 12 if is_mobile(page) else 28
+    pad_v = 14 if is_mobile(page) else 24
     return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)

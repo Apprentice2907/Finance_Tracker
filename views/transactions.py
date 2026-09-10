@@ -209,7 +209,7 @@ def transactions_view(page: ft.Page):
                 ft.Row([ft.Text("Income:", size=12, color=MUTED), ft.Text(format_currency(tot_inc), size=12, color=GREEN, weight=ft.FontWeight.BOLD)], spacing=4),
                 ft.Row([ft.Text("Expenses:", size=12, color=MUTED), ft.Text(format_currency(tot_exp), size=12, color=RED, weight=ft.FontWeight.BOLD)], spacing=4),
                 ft.Row([ft.Text("Net:", size=12, color=MUTED), ft.Text(format_currency(tot_net), size=12, color=GREEN if tot_net >= 0 else RED, weight=ft.FontWeight.BOLD)], spacing=4),
-            ], alignment=ft.MainAxisAlignment.SPACE_AROUND if mobile else ft.MainAxisAlignment.START, spacing=24),
+            ], alignment=ft.MainAxisAlignment.SPACE_AROUND if mobile else ft.MainAxisAlignment.START, spacing=12 if mobile else 24, wrap=True, run_spacing=6),
             padding=padding_box(12, 8),
             bgcolor="#F4F6F9",
             border_radius=8
@@ -261,27 +261,28 @@ def transactions_view(page: ft.Page):
                         ),
                         ft.Column([
                             ft.Row([
-                                ft.Container(width=7, height=7, bgcolor=t_color, border_radius=4),
-                                ft.Text(display_title, weight=ft.FontWeight.W_600, color=TEXT, size=13),
+                                ft.Container(width=6 if mobile else 7, height=6 if mobile else 7, bgcolor=t_color, border_radius=4),
+                                ft.Text(display_title, weight=ft.FontWeight.W_600, color=TEXT, size=12 if mobile else 13, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
                             ], spacing=6),
-                            ft.Text(subtitle_text, size=11, color=MUTED, max_lines=1, no_wrap=True),
+                            ft.Text(subtitle_text, size=10 if mobile else 11, color=MUTED, max_lines=1, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
                         ], spacing=2, expand=True),
                         ft.Text(
                             ("+ " if is_inc else "− ") + format_currency(t_amt),
                             color=col,
                             weight=ft.FontWeight.BOLD,
-                            size=13
+                            size=12 if mobile else 13,
+                            no_wrap=True
                         ),
                         ft.IconButton(
                             ft.Icons.EDIT_OUTLINED,
-                            icon_size=16,
+                            icon_size=15 if mobile else 16,
                             icon_color=MUTED,
                             tooltip="Edit",
                             on_click=lambda _, r=row: open_transaction_dialog(page, refresh, r)
                         ),
                         ft.IconButton(
                             ft.Icons.DELETE_OUTLINE,
-                            icon_size=16,
+                            icon_size=15 if mobile else 16,
                             icon_color=RED,
                             tooltip="Delete",
                             on_click=lambda _, tid=t_id: (delete_transaction(tid), refresh())
@@ -310,6 +311,6 @@ def transactions_view(page: ft.Page):
 
     refresh()
 
-    pad_h = 16 if is_mobile(page) else 28
-    pad_v = 16 if is_mobile(page) else 24
+    pad_h = 12 if is_mobile(page) else 28
+    pad_v = 14 if is_mobile(page) else 24
     return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)

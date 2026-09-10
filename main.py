@@ -95,6 +95,21 @@ def main(page: ft.Page):
         update_navigation_chrome()
         page.update()
 
+    def desktop_nav_btn(index, label, icon):
+        is_active = (state["current_tab"] == index)
+        return ft.TextButton(
+            content=ft.Row([
+                ft.Icon(icon, size=16, color=BLUE if is_active else MUTED),
+                ft.Text(label, size=13, weight=ft.FontWeight.W_600 if is_active else ft.FontWeight.W_400, color=TEXT if is_active else MUTED)
+            ], spacing=6, tight=True),
+            on_click=lambda _: navigate_to(index),
+            style=ft.ButtonStyle(
+                bgcolor=BLUE_LIGHT if is_active else None,
+                padding=padding_box(12, 8),
+                shape=ft.RoundedRectangleBorder(radius=8)
+            )
+        )
+
     def build_header():
         mobile = is_mobile(page)
 
@@ -114,47 +129,73 @@ def main(page: ft.Page):
             ),
         ], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
-        nav_dropdown = ft.Dropdown(
-            value=str(state["current_tab"]),
-            options=[ft.dropdown.Option(key=str(idx), text=label) for idx, label in NAV_ITEMS],
-            on_select=lambda e: navigate_to(int(e.control.value)),
-            width=135 if mobile else 165,
-            dense=True,
-            text_size=12 if mobile else 13,
-            border_color=BORDER,
-            border_radius=8,
-            bgcolor=CARD,
-            content_padding=padding_box(horizontal=10, vertical=6) if mobile else padding_box(horizontal=12, vertical=8)
-        )
-
-        add_btn = ft.IconButton(
-            icon=ft.Icons.ADD_ROUNDED,
-            bgcolor=BLUE,
-            icon_color="#FFFFFF",
-            icon_size=18,
-            tooltip="Add Transaction",
-            on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view)
-        ) if mobile else ft.ElevatedButton(
-            "Add Transaction",
-            icon=ft.Icons.ADD_ROUNDED,
-            on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view),
-            style=ft.ButtonStyle(
-                bgcolor=BLUE,
-                color="#FFFFFF",
-                padding=padding_box(14, 10),
-                shape=ft.RoundedRectangleBorder(radius=8)
+        if not mobile:
+            # Full Desktop Navigation
+            header_content = ft.Row([
+                brand,
+                ft.Row([
+                    desktop_nav_btn(0, "Dashboard", ft.Icons.DASHBOARD_ROUNDED),
+                    desktop_nav_btn(1, "Transactions", ft.Icons.RECEIPT_LONG_ROUNDED),
+                    desktop_nav_btn(2, "Accounts", ft.Icons.ACCOUNT_BALANCE_ROUNDED),
+                    desktop_nav_btn(3, "Reports", ft.Icons.INSIGHTS_ROUNDED),
+                    desktop_nav_btn(4, "Categories", ft.Icons.CATEGORY_ROUNDED),
+                    desktop_nav_btn(5, "Settings", ft.Icons.SETTINGS_ROUNDED),
+                ], spacing=4),
+                ft.ElevatedButton(
+                    "Add Transaction",
+                    icon=ft.Icons.ADD_ROUNDED,
+                    on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view),
+                    style=ft.ButtonStyle(
+                        bgcolor=BLUE,
+                        color="#FFFFFF",
+                        padding=padding_box(14, 10),
+                        shape=ft.RoundedRectangleBorder(radius=8)
+                    )
+                )
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        else:
+            # Compact Mobile Navigation with Dropdown Selector
+            nav_dropdown = ft.Dropdown(
+                value=str(state["current_tab"]),
+                options=[ft.dropdown.Option(key=str(idx), text=label) for idx, label in NAV_ITEMS],
+                on_select=lambda e: navigate_to(int(e.control.value)),
+                width=135,
+                dense=True,
+                text_size=12,
+                border_color=BORDER,
+                border_radius=8,
+                bgcolor=CARD,
+                content_padding=padding_box(horizontal=10, vertical=6)
             )
-        )
 
-        return ft.Container(
-            ft.Row([
+            add_btn = ft.IconButton(
+                icon=ft.Icons.ADD_ROUNDED,
+                bgcolor=BLUE,
+                icon_color="#FFFFFF",
+                icon_size=18,
+                tooltip="Add Transaction",
+                on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view)
+            )
+
+            header_content = ft.Row([
                 brand,
                 ft.Row([
                     nav_dropdown,
                     add_btn
-                ], spacing=6 if mobile else 10, vertical_alignment=ft.CrossAxisAlignment.CENTER)
-            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-            padding=padding_box(horizontal=12, vertical=8) if mobile else padding_box(horizontal=24, vertical=12),
+                ], spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
+        from utils.responsive import is_mobile_platform
+        top_pad = 34 if (mobile and is_mobile_platform(page)) else (8 if mobile else 12)
+
+        return ft.Container(
+            header_content,
+            padding=ft.Padding(
+                left=12 if mobile else 24,
+                right=12 if mobile else 24,
+                top=top_pad,
+                bottom=8 if mobile else 12
+            ),
             bgcolor=CARD,
             border=ft.Border(bottom=ft.BorderSide(1, BORDER))
         )
