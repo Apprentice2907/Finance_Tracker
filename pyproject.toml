@@ -1,0 +1,15 @@
+[project]
+name = "finance-tracker"
+version = "0.1.0"
+description = "Finance Tracker Application"
+dependencies = [
+    "flet>=0.86.0",
+    "openpyxl>=3.1.2",
+    "matplotlib>=3.8.0",
+]
+
+[tool.flet.app]
+path = "."
+
+[tool.flet.android]
+extract_packages = ["matplotlib"]

@@ -1,4 +1,16 @@
+import os
 import sys
+import tempfile
+
+# Configure writable cache directory for matplotlib on Android/embedded runtimes
+if "MPLCONFIGDIR" not in os.environ:
+    try:
+        mpl_dir = os.path.join(tempfile.gettempdir(), "matplotlib")
+        os.makedirs(mpl_dir, exist_ok=True)
+        os.environ["MPLCONFIGDIR"] = mpl_dir
+    except Exception:
+        pass
+
 import flet as ft
 
 from db.database import init_db
