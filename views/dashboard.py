@@ -272,13 +272,13 @@ def dashboard_view(page: ft.Page, on_navigate=None):
             cards.append(
                 ft.Container(
                     ft.Column([
-                        ft.Text(calendar.month_abbr[month], weight=ft.FontWeight.BOLD, color=TEXT, size=13),
-                        ft.Text(f"In   {format_currency(inc)}", size=10, color=GREEN),
-                        ft.Text(f"Out  {format_currency(exp)}", size=10, color=RED),
-                        ft.Text(f"Net  {format_currency(net)}", size=10, color=GREEN if net >= 0 else RED, weight=ft.FontWeight.W_500),
-                    ], spacing=4),
+                        ft.Text(calendar.month_abbr[month], weight=ft.FontWeight.BOLD, color=TEXT, size=12 if is_mobile(page) else 13),
+                        ft.Text(f"In   {format_currency(inc)}", size=10, color=GREEN, no_wrap=True),
+                        ft.Text(f"Out  {format_currency(exp)}", size=10, color=RED, no_wrap=True),
+                        ft.Text(f"Net  {format_currency(net)}", size=10, color=GREEN if net >= 0 else RED, weight=ft.FontWeight.W_500, no_wrap=True),
+                    ], spacing=3 if is_mobile(page) else 4),
                     col={"sm": 6, "md": 3, "lg": 2},
-                    padding=12,
+                    padding=10 if is_mobile(page) else 12,
                     bgcolor="#F0F4FD" if is_cur_month else "#F9FAFC",
                     border=card_border("#C9D8F8" if is_cur_month else BORDER),
                     border_radius=10,
@@ -359,7 +359,8 @@ def dashboard_view(page: ft.Page, on_navigate=None):
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                 ft.Container(
                     build_cashflow_chart(state["chart_type"], state["selected_year"], is_mobile=mobile),
-                    height=200 if mobile else 240,
+                    height=200 if mobile else 250,
+                    width=float("inf"),
                     padding=padding_box(top=6)
                 )
             ], spacing=6),
@@ -458,29 +459,32 @@ def dashboard_view(page: ft.Page, on_navigate=None):
             transactions_card,
         ])
 
-        if not mobile:
-            yearly_matrix = make_card(
-                ft.Column([
-                    ft.Row([
-                        ft.Column([
-                            ft.Text(f"{state['selected_year']} Monthly Performance", size=16, weight=ft.FontWeight.BOLD, color=TEXT),
-                            ft.Text("Click on any month to filter dashboard to that period.", size=12, color=MUTED),
-                        ], spacing=2),
-                        ft.Dropdown(
-                            value=str(state["selected_year"]),
-                            options=[ft.dropdown.Option(str(y), str(y)) for y in range(datetime.date.today().year, datetime.date.today().year - 5, -1)],
-                            width=110,
-                            text_size=12,
-                            dense=True,
-                            border_color=BORDER,
-                            content_padding=padding_box(10, 6),
-                            on_select=lambda e: (state.update({"selected_year": int(e.control.value)}), refresh())
-                        )
-                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                    monthly_overview_grid(state["selected_year"])
-                ], spacing=12)
+        yearly_header = ft.Row([
+            ft.Column([
+                ft.Text(f"{state['selected_year']} Monthly Performance", size=15 if mobile else 16, weight=ft.FontWeight.BOLD, color=TEXT),
+                ft.Text("Click on any month to filter dashboard.", size=11 if mobile else 12, color=MUTED),
+            ], spacing=2, expand=True if mobile else False),
+            ft.Dropdown(
+                value=str(state["selected_year"]),
+                options=[ft.dropdown.Option(str(y), str(y)) for y in range(datetime.date.today().year, datetime.date.today().year - 5, -1)],
+                width=100 if mobile else 110,
+                text_size=12,
+                dense=True,
+                border_color=BORDER,
+                border_radius=8,
+                content_padding=padding_box(8, 6) if mobile else padding_box(10, 6),
+                on_select=lambda e: (state.update({"selected_year": int(e.control.value)}), refresh())
             )
-            content_items.append(yearly_matrix)
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
+        yearly_matrix = make_card(
+            ft.Column([
+                yearly_header,
+                monthly_overview_grid(state["selected_year"])
+            ], spacing=12),
+            padding=12 if mobile else 18
+        )
+        content_items.append(yearly_matrix)
 
         root.controls = content_items
         page.update()

@@ -24,9 +24,9 @@ def build_cashflow_chart(selected_type="expense", year=None, is_mobile=False):
 
     color = "#D65B67" if selected_type == "expense" else "#159B72"
     
-    # Adaptive figsize and DPI
-    fig_size = (4.8, 2.6) if is_mobile else (7.2, 3.0)
-    dpi = 120 if is_mobile else 140
+    # Adaptive figsize and DPI: wider ratio so it spans full card width
+    fig_size = (6.5, 2.8) if is_mobile else (8.5, 3.0)
+    dpi = 130 if is_mobile else 140
 
     fig, ax = plt.subplots(figsize=fig_size, dpi=dpi)
     fig.patch.set_facecolor("#FFFFFF")
@@ -35,13 +35,13 @@ def build_cashflow_chart(selected_type="expense", year=None, is_mobile=False):
     x_vals = range(1, 13)
     y_vals = [totals[m] for m in x_vals]
 
-    bars = ax.bar(x_vals, y_vals, width=0.54, color=color, alpha=0.85, edgecolor="none", zorder=3)
+    bars = ax.bar(x_vals, y_vals, width=0.55, color=color, alpha=0.88, edgecolor="none", zorder=3)
     for bar in bars:
         bar.set_linewidth(0)
 
-    month_labels = [calendar.month_abbr[m][0] if is_mobile else calendar.month_abbr[m] for m in range(1, 13)]
+    month_labels = [calendar.month_abbr[m] for m in range(1, 13)]
     ax.set_xticks(list(x_vals))
-    ax.set_xticklabels(month_labels, fontsize=7 if is_mobile else 8, color="#7A8494", fontweight="500")
+    ax.set_xticklabels(month_labels, fontsize=7.5 if is_mobile else 8.5, color="#7A8494", fontweight="500")
 
     def currency_fmt(x, _):
         if x >= 10000000:
@@ -53,7 +53,7 @@ def build_cashflow_chart(selected_type="expense", year=None, is_mobile=False):
         return f"₹{x:.0f}"
 
     ax.yaxis.set_major_formatter(FuncFormatter(currency_fmt))
-    ax.tick_params(axis="y", labelsize=7 if is_mobile else 8, colors="#7A8494", length=0)
+    ax.tick_params(axis="y", labelsize=7.5 if is_mobile else 8.5, colors="#7A8494", length=0)
     ax.tick_params(axis="x", length=0)
     ax.grid(axis="y", color="#EEF0F3", linewidth=0.8, linestyle="-", zorder=0)
     ax.set_axisbelow(True)
@@ -66,8 +66,12 @@ def build_cashflow_chart(selected_type="expense", year=None, is_mobile=False):
     ax.set_ylim(0, max_y * 1.18)
 
     buffer = io.BytesIO()
-    fig.savefig(buffer, format="png", bbox_inches="tight", pad_inches=0.08)
+    fig.savefig(buffer, format="png", bbox_inches="tight", pad_inches=0.04)
     plt.close(fig)
 
     encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return ft.Image(src=f"data:image/png;base64,{encoded}", fit=ft.BoxFit.CONTAIN, expand=True)
+    return ft.Image(
+        src=f"data:image/png;base64,{encoded}",
+        fit=ft.BoxFit.FIT_WIDTH,
+        width=float("inf")
+    )

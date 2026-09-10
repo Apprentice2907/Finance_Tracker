@@ -239,6 +239,7 @@ def reports_view(page: ft.Page):
                 ft.Container(
                     build_cashflow_chart("expense", state["selected_year"], is_mobile=mobile),
                     height=200 if mobile else 250,
+                    width=float("inf"),
                     padding=padding_box(top=6)
                 )
             ], spacing=6)
