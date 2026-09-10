@@ -60,16 +60,18 @@ def dashboard_view(page: ft.Page, on_navigate=None):
                 state["period_key"] = val
                 refresh()
 
+        mob = is_mobile(page)
         return ft.Container(
             ft.Dropdown(
                 value=state["period_key"],
                 options=options,
                 on_select=on_change,
-                width=175 if not is_mobile(page) else 155,
-                text_size=13,
+                width=135 if mob else 170,
+                text_size=12 if mob else 13,
                 dense=True,
                 border_color=BORDER,
-                content_padding=padding_box(12, 8)
+                border_radius=8,
+                content_padding=padding_box(10, 6) if mob else padding_box(12, 8)
             ),
             bgcolor=CARD,
             border_radius=8
@@ -110,20 +112,42 @@ def dashboard_view(page: ft.Page, on_navigate=None):
 
     def summary_card(title, value, prev_value, color, icon, is_main=False):
         change_text, change_color, change_icon = format_percent_change(value, prev_value)
+        mob = is_mobile(page)
+
+        sub_items = []
+        if change_text == "No prior data":
+            sub_items.append(ft.Icon(ft.Icons.REMOVE_ROUNDED, size=11, color=MUTED))
+            sub_items.append(ft.Text("No prior data", size=10 if mob else 11, color=MUTED, weight=ft.FontWeight.W_500, no_wrap=True))
+        elif change_text == "New activity":
+            sub_items.append(ft.Icon(ft.Icons.TRENDING_FLAT, size=11, color=BLUE))
+            sub_items.append(ft.Text("New activity", size=10 if mob else 11, color=BLUE, weight=ft.FontWeight.W_500, no_wrap=True))
+        else:
+            sub_items.append(ft.Icon(change_icon, size=11 if mob else 13, color=change_color))
+            sub_items.append(ft.Text(change_text, size=10 if mob else 11, color=change_color, weight=ft.FontWeight.W_500, no_wrap=True))
+            sub_items.append(ft.Text(previous_dates()[2], size=10 if mob else 11, color=MUTED, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS))
+
         return make_card(
             ft.Column([
                 ft.Row([
-                    ft.Text(title, size=13, color=MUTED, weight=ft.FontWeight.W_500),
-                    ft.Container(ft.Icon(icon, color=color, size=16), bgcolor=soft_color(color), padding=6, border_radius=8)
-                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                ft.Text(format_currency(value), size=22 if not is_main else 24, weight=ft.FontWeight.BOLD, color=TEXT),
-                ft.Row([
-                    ft.Icon(change_icon, size=14, color=change_color),
-                    ft.Text(change_text, size=11, color=change_color, weight=ft.FontWeight.W_500),
-                    ft.Text(previous_dates()[2], size=11, color=MUTED),
-                ], spacing=4, vertical_alignment=ft.CrossAxisAlignment.CENTER)
-            ], spacing=6),
-            expand=1 if not is_mobile(page) else None
+                    ft.Text(title, size=11 if mob else 13, color=MUTED, weight=ft.FontWeight.W_500, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
+                    ft.Container(
+                        ft.Icon(icon, color=color, size=13 if mob else 16),
+                        bgcolor=soft_color(color),
+                        padding=4 if mob else 6,
+                        border_radius=7
+                    )
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Text(
+                    format_currency(value),
+                    size=17 if mob and not is_main else (22 if not is_main else 24),
+                    weight=ft.FontWeight.BOLD,
+                    color=TEXT,
+                    no_wrap=True
+                ),
+                ft.Row(sub_items, spacing=3, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+            ], spacing=4 if mob else 6),
+            padding=padding_box(12, 10) if mob else 18,
+            expand=1
         )
 
     def top_categories_widget(start_date, end_date):

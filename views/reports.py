@@ -43,6 +43,7 @@ def reports_view(page: ft.Page):
 
     def period_dropdown():
         options = [ft.dropdown.Option(k, v) for k, v in PERIOD_OPTIONS]
+        mob = is_mobile(page)
         def on_change(e):
             val = e.control.value
             if val == "custom":
@@ -56,11 +57,12 @@ def reports_view(page: ft.Page):
             value=state["period_key"],
             options=options,
             on_select=on_change,
-            width=175 if not is_mobile(page) else 155,
-            text_size=13,
+            width=135 if mob else 170,
+            text_size=12 if mob else 13,
             dense=True,
             border_color=BORDER,
-            content_padding=padding_box(12, 8)
+            border_radius=8,
+            content_padding=padding_box(10, 6) if mob else padding_box(12, 8)
         )
 
     def apply_custom_range(start_d, end_d):
@@ -72,19 +74,40 @@ def reports_view(page: ft.Page):
     def metric_card(title, value, prev_value, color, icon, is_currency=True, subtitle=None):
         change_text, change_color, change_icon = format_percent_change(value, prev_value) if is_currency else ("", MUTED, ft.Icons.REMOVE)
         display_val = format_currency(value) if is_currency else f"{value:.1f}%"
+        mob = is_mobile(page)
+
+        if is_currency:
+            if change_text == "No prior data":
+                sub_row = ft.Row([
+                    ft.Icon(ft.Icons.REMOVE_ROUNDED, size=11, color=MUTED),
+                    ft.Text("No prior data", size=10 if mob else 11, color=MUTED, weight=ft.FontWeight.W_500, no_wrap=True)
+                ], spacing=2, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+            else:
+                sub_row = ft.Row([
+                    ft.Icon(change_icon, size=11 if mob else 13, color=change_color),
+                    ft.Text(change_text, size=10 if mob else 11, color=change_color, weight=ft.FontWeight.W_500, no_wrap=True)
+                ], spacing=2, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        else:
+            sub_row = ft.Row([
+                ft.Text(subtitle or "", size=10 if mob else 11, color=MUTED, weight=ft.FontWeight.W_500, no_wrap=True)
+            ], vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
         return make_card(
             ft.Column([
                 ft.Row([
-                    ft.Text(title, size=12, color=MUTED, weight=ft.FontWeight.W_500),
-                    ft.Container(ft.Icon(icon, color=color, size=15), bgcolor=soft_color(color), padding=6, border_radius=8)
-                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                ft.Text(display_val, size=20, weight=ft.FontWeight.BOLD, color=TEXT),
-                ft.Row([
-                    ft.Icon(change_icon, size=13, color=change_color) if is_currency else ft.Container(),
-                    ft.Text(change_text if is_currency else (subtitle or ""), size=11, color=change_color if is_currency else MUTED, weight=ft.FontWeight.W_500),
-                ], spacing=3, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+                    ft.Text(title, size=11 if mob else 12, color=MUTED, weight=ft.FontWeight.W_500, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS),
+                    ft.Container(
+                        ft.Icon(icon, color=color, size=13 if mob else 15),
+                        bgcolor=soft_color(color),
+                        padding=4 if mob else 6,
+                        border_radius=7
+                    )
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Text(display_val, size=17 if mob else 20, weight=ft.FontWeight.BOLD, color=TEXT, no_wrap=True),
+                sub_row
             ], spacing=4),
-            expand=1 if not is_mobile(page) else None
+            padding=padding_box(12, 10) if mob else 18,
+            expand=1
         )
 
     def category_breakdown_list(t_type, start_d, end_d):

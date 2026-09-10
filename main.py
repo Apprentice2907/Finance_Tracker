@@ -34,7 +34,8 @@ def main(page: ft.Page):
 
     # Safe desktop window properties (avoid crash on mobile/web)
     try:
-        if page.window:
+        p_str = str(getattr(page, "platform", "")).lower()
+        if p_str in ("windows", "macos", "linux") and page.window:
             page.window.width = 1120
             page.window.height = 780
             page.window.min_width = 340
@@ -48,6 +49,26 @@ def main(page: ft.Page):
     }
 
     content_area = ft.Container(expand=True)
+
+    NAV_ITEMS = [
+        (0, "Dashboard"),
+        (1, "Transactions"),
+        (2, "Accounts"),
+        (3, "Reports"),
+        (4, "Categories"),
+        (5, "Settings"),
+    ]
+
+    header_container = ft.Container()
+
+    # Floating Action Button for Mobile
+    fab = ft.FloatingActionButton(
+        icon=ft.Icons.ADD_ROUNDED,
+        bgcolor=BLUE,
+        foreground_color="#FFFFFF",
+        tooltip="Add Transaction",
+        on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view)
+    )
 
     def navigate_to(tab_index: int):
         state["current_tab"] = tab_index
@@ -74,106 +95,75 @@ def main(page: ft.Page):
         update_navigation_chrome()
         page.update()
 
-    # --- Mobile Navigation Bar ---
-    nav_bar = ft.NavigationBar(
-        selected_index=0,
-        on_change=lambda e: navigate_to(e.control.selected_index),
-        destinations=[
-            ft.NavigationBarDestination(icon=ft.Icons.DASHBOARD_OUTLINED, selected_icon=ft.Icons.DASHBOARD_ROUNDED, label="Dashboard"),
-            ft.NavigationBarDestination(icon=ft.Icons.RECEIPT_LONG_OUTLINED, selected_icon=ft.Icons.RECEIPT_LONG_ROUNDED, label="Transactions"),
-            ft.NavigationBarDestination(icon=ft.Icons.ACCOUNT_BALANCE_OUTLINED, selected_icon=ft.Icons.ACCOUNT_BALANCE_ROUNDED, label="Accounts"),
-            ft.NavigationBarDestination(icon=ft.Icons.INSIGHTS_OUTLINED, selected_icon=ft.Icons.INSIGHTS_ROUNDED, label="Reports"),
-            ft.NavigationBarDestination(icon=ft.Icons.CATEGORY_OUTLINED, selected_icon=ft.Icons.CATEGORY_ROUNDED, label="Categories"),
-            ft.NavigationBarDestination(icon=ft.Icons.SETTINGS_OUTLINED, selected_icon=ft.Icons.SETTINGS_ROUNDED, label="Settings"),
-        ],
-        bgcolor=CARD,
-        indicator_color=BLUE_LIGHT,
-        height=62
-    )
+    def build_header():
+        mobile = is_mobile(page)
 
-    # --- Desktop Header Navigation ---
-    def desktop_nav_btn(index, label, icon):
-        is_active = (state["current_tab"] == index)
-        return ft.TextButton(
-            content=ft.Row([
-                ft.Icon(icon, size=16, color=BLUE if is_active else MUTED),
-                ft.Text(label, size=13, weight=ft.FontWeight.W_600 if is_active else ft.FontWeight.W_400, color=TEXT if is_active else MUTED)
-            ], spacing=6, tight=True),
-            on_click=lambda _: navigate_to(index),
+        brand = ft.Row([
+            ft.Container(
+                ft.Icon(ft.Icons.ACCOUNT_BALANCE_WALLET_ROUNDED, color=BLUE, size=18 if mobile else 20),
+                bgcolor=BLUE_LIGHT,
+                padding=6 if mobile else 8,
+                border_radius=8
+            ),
+            ft.Text(
+                "Finance Tracker",
+                size=15 if mobile else 18,
+                weight=ft.FontWeight.BOLD,
+                color=TEXT,
+                no_wrap=True
+            ),
+        ], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
+        nav_dropdown = ft.Dropdown(
+            value=str(state["current_tab"]),
+            options=[ft.dropdown.Option(key=str(idx), text=label) for idx, label in NAV_ITEMS],
+            on_select=lambda e: navigate_to(int(e.control.value)),
+            width=135 if mobile else 165,
+            dense=True,
+            text_size=12 if mobile else 13,
+            border_color=BORDER,
+            border_radius=8,
+            bgcolor=CARD,
+            content_padding=padding_box(horizontal=10, vertical=6) if mobile else padding_box(horizontal=12, vertical=8)
+        )
+
+        add_btn = ft.IconButton(
+            icon=ft.Icons.ADD_ROUNDED,
+            bgcolor=BLUE,
+            icon_color="#FFFFFF",
+            icon_size=18,
+            tooltip="Add Transaction",
+            on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view)
+        ) if mobile else ft.ElevatedButton(
+            "Add Transaction",
+            icon=ft.Icons.ADD_ROUNDED,
+            on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view),
             style=ft.ButtonStyle(
-                bgcolor=BLUE_LIGHT if is_active else None,
-                padding=padding_box(12, 8),
+                bgcolor=BLUE,
+                color="#FFFFFF",
+                padding=padding_box(14, 10),
                 shape=ft.RoundedRectangleBorder(radius=8)
             )
         )
 
-    def build_desktop_header():
         return ft.Container(
             ft.Row([
-                # Logo & Title
+                brand,
                 ft.Row([
-                    ft.Container(
-                        ft.Icon(ft.Icons.ACCOUNT_BALANCE_WALLET_ROUNDED, color=BLUE, size=20),
-                        bgcolor=BLUE_LIGHT,
-                        padding=8,
-                        border_radius=9
-                    ),
-                    ft.Text("Finance Tracker", size=18, weight=ft.FontWeight.BOLD, color=TEXT),
-                ], spacing=10),
-
-                # Desktop Navigation Links
-                ft.Row([
-                    desktop_nav_btn(0, "Dashboard", ft.Icons.DASHBOARD_ROUNDED),
-                    desktop_nav_btn(1, "Transactions", ft.Icons.RECEIPT_LONG_ROUNDED),
-                    desktop_nav_btn(2, "Accounts", ft.Icons.ACCOUNT_BALANCE_ROUNDED),
-                    desktop_nav_btn(3, "Reports", ft.Icons.INSIGHTS_ROUNDED),
-                    desktop_nav_btn(4, "Categories", ft.Icons.CATEGORY_ROUNDED),
-                    desktop_nav_btn(5, "Settings", ft.Icons.SETTINGS_ROUNDED),
-                ], spacing=4),
-
-                # Quick Add Button
-                ft.ElevatedButton(
-                    "Add Transaction",
-                    icon=ft.Icons.ADD_ROUNDED,
-                    on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view),
-                    style=ft.ButtonStyle(
-                        bgcolor=BLUE,
-                        color="#FFFFFF",
-                        padding=padding_box(14, 10),
-                        shape=ft.RoundedRectangleBorder(radius=8)
-                    )
-                )
+                    nav_dropdown,
+                    add_btn
+                ], spacing=6 if mobile else 10, vertical_alignment=ft.CrossAxisAlignment.CENTER)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-            padding=padding_box(24, 12),
+            padding=padding_box(horizontal=12, vertical=8) if mobile else padding_box(horizontal=24, vertical=12),
             bgcolor=CARD,
             border=ft.Border(bottom=ft.BorderSide(1, BORDER))
         )
 
-    desktop_header_container = ft.Container()
-
-    # Floating Action Button for Mobile
-    fab = ft.FloatingActionButton(
-        icon=ft.Icons.ADD_ROUNDED,
-        bgcolor=BLUE,
-        foreground_color="#FFFFFF",
-        tooltip="Add Transaction",
-        on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view)
-    )
-
     def update_navigation_chrome():
         mobile = is_mobile(page)
-        nav_bar.selected_index = state["current_tab"]
-
-        if mobile:
-            desktop_header_container.content = None
-            desktop_header_container.visible = False
-            page.navigation_bar = nav_bar
-            page.floating_action_button = fab
-        else:
-            desktop_header_container.content = build_desktop_header()
-            desktop_header_container.visible = True
-            page.navigation_bar = None
-            page.floating_action_button = None
+        header_container.content = build_header()
+        page.navigation_bar = None
+        page.floating_action_button = fab if mobile else None
 
     # Handle screen resize dynamically
     def on_resize(e):
@@ -185,7 +175,7 @@ def main(page: ft.Page):
     # Main App Layout
     page.add(
         ft.Column([
-            desktop_header_container,
+            header_container,
             content_area
         ], spacing=0, expand=True)
     )

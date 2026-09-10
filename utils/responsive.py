@@ -17,17 +17,39 @@ AMBER = "#E59819"
 BREAKPOINT_MOBILE = 600
 BREAKPOINT_TABLET = 1024
 
+def is_mobile_platform(page: ft.Page) -> bool:
+    if not page:
+        return False
+    try:
+        if hasattr(page, "platform") and page.platform is not None:
+            p_str = str(page.platform).lower()
+            if "android" in p_str or "ios" in p_str:
+                return True
+    except Exception:
+        pass
+    return False
+
 def get_page_width(page: ft.Page) -> float:
-    return page.width if page.width is not None and page.width > 0 else 1120
+    if page and page.width is not None and page.width > 0:
+        return page.width
+    if is_mobile_platform(page):
+        return 390.0
+    return 1120.0
 
 def is_mobile(page: ft.Page) -> bool:
+    if is_mobile_platform(page):
+        return True
     return get_page_width(page) < BREAKPOINT_MOBILE
 
 def is_tablet(page: ft.Page) -> bool:
+    if is_mobile_platform(page):
+        return False
     w = get_page_width(page)
     return BREAKPOINT_MOBILE <= w < BREAKPOINT_TABLET
 
 def is_desktop(page: ft.Page) -> bool:
+    if is_mobile_platform(page):
+        return False
     return get_page_width(page) >= BREAKPOINT_TABLET
 
 def soft_color(color_hex: str) -> str:

@@ -157,7 +157,14 @@ def transactions_view(page: ft.Page):
         )
 
         # Add Button
-        add_btn = ft.ElevatedButton(
+        add_btn = ft.IconButton(
+            icon=ft.Icons.ADD_ROUNDED,
+            bgcolor=BLUE,
+            icon_color="#FFFFFF",
+            icon_size=18,
+            tooltip="Add Transaction",
+            on_click=lambda _: open_transaction_dialog(page, refresh)
+        ) if mobile else ft.ElevatedButton(
             "Add Transaction",
             icon=ft.Icons.ADD_ROUNDED,
             on_click=lambda _: open_transaction_dialog(page, refresh),
