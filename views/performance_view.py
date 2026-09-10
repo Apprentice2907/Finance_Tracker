@@ -2,7 +2,6 @@ import flet as ft
 import os
 import json
 import sqlite3
-import psutil
 from db.database import get_connection, get_db_path
 from utils.observability import METRICS
 
@@ -37,8 +36,13 @@ def get_performance_diagnostics_data(db_path: str = None) -> dict:
         except Exception:
             pass
 
-    proc = psutil.Process(os.getpid())
-    rss_mb = proc.memory_info().rss / (1024 * 1024)
+    rss_mb = 0.0
+    try:
+        import psutil
+        proc = psutil.Process(os.getpid())
+        rss_mb = proc.memory_info().rss / (1024 * 1024)
+    except Exception:
+        pass
 
     obs_summary = METRICS.get_summary()
 

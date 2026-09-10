@@ -3,7 +3,6 @@ import logging
 import json
 import sys
 import os
-import psutil
 from typing import Dict, Any, Optional
 from contextlib import contextmanager
 
@@ -50,8 +49,13 @@ class MetricsRegistry:
         total_cache = self.cache_hits + self.cache_misses
         hit_rate = (self.cache_hits / total_cache * 100.0) if total_cache > 0 else 0.0
         
-        proc = psutil.Process(os.getpid())
-        rss_mb = proc.memory_info().rss / (1024 * 1024)
+        rss_mb = 0.0
+        try:
+            import psutil
+            proc = psutil.Process(os.getpid())
+            rss_mb = proc.memory_info().rss / (1024 * 1024)
+        except Exception:
+            pass
 
         avg_latencies = {}
         for op, cnt in self.operation_counts.items():
