@@ -1,14 +1,11 @@
 import unittest
 import os
-import random
-import datetime
 from db.database import init_db, get_connection
 from db.transactions import (
     add_transaction, update_transaction, delete_transaction,
-    get_totals, get_monthly_totals, get_daily_totals, get_category_totals,
+    get_totals, get_monthly_totals, get_daily_totals,
     bulk_insert_transactions
 )
-from db.categories import add_category
 
 class TestFinancialInvariants(unittest.TestCase):
     @classmethod

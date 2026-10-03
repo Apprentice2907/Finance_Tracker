@@ -1,11 +1,11 @@
 import datetime
 import flet as ft
 
-from db.transactions import get_transactions, delete_transaction, get_totals
+from db.transactions import get_transactions, delete_transaction
 from db.categories import get_categories
 from utils.responsive import (
     BG, CARD, TEXT, MUTED, BORDER, BLUE, GREEN, RED,
-    is_mobile, padding_box, card_border, soft_color, format_currency
+    is_mobile, padding_box, card_border, soft_color, format_currency, show_snackbar
 )
 from utils.period_helper import PERIOD_OPTIONS, get_period_dates
 from views.dialogs import open_transaction_dialog, open_custom_date_dialog
@@ -52,6 +52,28 @@ def transactions_view(page: ft.Page):
         )
 
     def refresh():
+        try:
+            _refresh_inner()
+        except Exception as _exc:
+            from utils.observability import METRICS
+            METRICS.record_error("transactions.refresh", str(_exc))
+            _err = ft.Container(
+                ft.Column([
+                    ft.Row([
+                        ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="#D65B67", size=18),
+                        ft.Text("Transactions failed to load", size=14, weight=ft.FontWeight.BOLD, color="#D65B67"),
+                    ], spacing=8),
+                    ft.Text(str(_exc)[:200], size=11, color="#7A8494"),
+                    ft.ElevatedButton("Retry", on_click=lambda _: refresh(), style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", padding=padding_box(14, 10)))
+                ], spacing=6),
+                padding=14,
+                bgcolor="#FFF5F6",
+                border_radius=10
+            )
+            root.controls = [_err]
+            page.update()
+
+    def _refresh_inner():
         start_d, end_d = current_date_filter()
         t_type = None if state["type"] == "all" else state["type"]
         cat_id = None if state["category_id"] == "all" else state["category_id"]
@@ -278,6 +300,8 @@ def transactions_view(page: ft.Page):
                             icon_size=15 if mobile else 16,
                             icon_color=MUTED,
                             tooltip="Edit",
+                            width=44,
+                            height=44,
                             on_click=lambda _, r=row: open_transaction_dialog(page, refresh, r)
                         ),
                         ft.IconButton(
@@ -285,7 +309,9 @@ def transactions_view(page: ft.Page):
                             icon_size=15 if mobile else 16,
                             icon_color=RED,
                             tooltip="Delete",
-                            on_click=lambda _, tid=t_id: (delete_transaction(tid), refresh())
+                            width=44,
+                            height=44,
+                            on_click=lambda _, tid=t_id: (delete_transaction(tid), show_snackbar(page, "Transaction deleted"), refresh())
                         )
                     ], vertical_alignment=ft.CrossAxisAlignment.CENTER),
                     padding=padding_box(vertical=8),
@@ -312,5 +338,6 @@ def transactions_view(page: ft.Page):
     refresh()
 
     pad_h = 12 if is_mobile(page) else 28
-    pad_v = 14 if is_mobile(page) else 24
-    return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)
+    pad_v_top = 14 if is_mobile(page) else 24
+    pad_v_bottom = 84 if is_mobile(page) else 24
+    return ft.Container(root, padding=padding_box(horizontal=pad_h, top=pad_v_top, bottom=pad_v_bottom), expand=True, bgcolor=BG)

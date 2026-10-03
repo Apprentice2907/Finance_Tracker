@@ -1,7 +1,6 @@
 import flet as ft
 import os
 import json
-import sqlite3
 from db.database import get_connection, get_db_path
 from utils.observability import METRICS
 

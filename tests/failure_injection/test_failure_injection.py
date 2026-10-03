@@ -1,9 +1,7 @@
 import unittest
 import os
-import sqlite3
-import tempfile
 from db.database import init_db, get_connection
-from db.transactions import add_transaction, get_totals, get_transactions
+from db.transactions import add_transaction, get_totals
 from db.health import check_database_health
 from db.aggregate_validator import validate_aggregate_consistency
 from db.rebuild import rebuild_daily_aggregates

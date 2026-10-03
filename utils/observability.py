@@ -1,7 +1,6 @@
 import time
 import logging
 import json
-import sys
 import os
 from typing import Dict, Any, Optional
 from contextlib import contextmanager

@@ -3,7 +3,7 @@ import os
 from db.database import init_db, get_connection
 from db.transactions import (
     add_transaction, update_transaction, delete_transaction,
-    get_totals, get_category_totals, bulk_insert_transactions,
+    get_totals, bulk_insert_transactions,
     _QUERY_CACHE
 )
 from utils.backup import create_database_backup, restore_database_from_backup

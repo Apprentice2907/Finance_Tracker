@@ -1,21 +1,19 @@
 import os
 import sys
 import datetime
-import calendar
 import tempfile
 
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Test imports
-from db.database import init_db, get_connection, get_db_path
-from db.categories import add_category, get_categories, get_category_by_name, update_category, delete_category
+from db.database import init_db, get_connection
+from db.categories import add_category, get_category_by_name, update_category, delete_category
 from db.transactions import (
-    add_transaction, get_transactions, update_transaction, delete_transaction,
-    get_totals, get_category_totals, check_duplicate_transaction, bulk_insert_transactions
+    add_transaction, get_transactions, delete_transaction
 )
 from utils.period_helper import get_period_dates, get_previous_period_dates, PERIOD_OPTIONS
-from utils.responsive import format_currency, format_percent_change
+from utils.responsive import format_percent_change
 from utils.exports import export_to_excel, parse_and_import_excel
 from utils.backup import create_database_backup, restore_database_from_backup
 

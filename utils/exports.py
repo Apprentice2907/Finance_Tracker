@@ -5,7 +5,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 from db.transactions import get_transactions, get_totals, get_category_totals, bulk_insert_transactions
-from db.categories import get_categories, get_or_create_category
+from db.categories import get_or_create_category
 
 def export_to_excel(file_path: str, start_date=None, end_date=None, period_label="All Time") -> str:
     """

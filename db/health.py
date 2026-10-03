@@ -1,4 +1,3 @@
-import sqlite3
 import os
 from typing import Dict, Any, List
 from db.database import get_connection, get_db_path

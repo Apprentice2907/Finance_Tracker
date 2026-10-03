@@ -5,7 +5,7 @@ from db.categories import (
 )
 from utils.responsive import (
     BG, CARD, TEXT, MUTED, BORDER, BLUE, GREEN, RED,
-    is_mobile, padding_box, card_border, soft_color
+    is_mobile, padding_box, card_border, show_snackbar
 )
 
 def categories_view(page: ft.Page):
@@ -96,14 +96,17 @@ def categories_view(page: ft.Page):
             page.update()
             return
 
-        if state["editing_id"]:
+        is_edit = bool(state["editing_id"])
+        if is_edit:
             update_category(state["editing_id"], cat_name, type_dropdown.value, state["selected_color"])
             message_text.value = "Category updated successfully."
             message_text.color = GREEN
+            show_snackbar(page, "Category updated")
         else:
             add_category(cat_name, type_dropdown.value, state["selected_color"])
             message_text.value = "Category added successfully."
             message_text.color = GREEN
+            show_snackbar(page, "Category added")
 
         state["editing_id"] = None
         name_input.value = ""
@@ -125,6 +128,7 @@ def categories_view(page: ft.Page):
         if success:
             message_text.value = f"Category '{cname}' deleted."
             message_text.color = GREEN
+            show_snackbar(page, f"Category '{cname}' deleted")
             if state["editing_id"] == cid:
                 clear_form()
             else:
@@ -132,9 +136,32 @@ def categories_view(page: ft.Page):
         else:
             message_text.value = f"Cannot delete '{cname}': It is linked to existing transactions."
             message_text.color = RED
+            show_snackbar(page, f"Cannot delete '{cname}': linked to transactions", is_error=True)
             page.update()
 
     def refresh():
+        try:
+            _refresh_inner()
+        except Exception as _exc:
+            from utils.observability import METRICS
+            METRICS.record_error("categories.refresh", str(_exc))
+            _err = ft.Container(
+                ft.Column([
+                    ft.Row([
+                        ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="#D65B67", size=18),
+                        ft.Text("Categories failed to load", size=14, weight=ft.FontWeight.BOLD, color="#D65B67"),
+                    ], spacing=8),
+                    ft.Text(str(_exc)[:200], size=11, color="#7A8494"),
+                    ft.ElevatedButton("Retry", on_click=lambda _: refresh(), style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", padding=padding_box(14, 10)))
+                ], spacing=6),
+                padding=14,
+                bgcolor="#FFF5F6",
+                border_radius=10
+            )
+            root.controls = [_err]
+            page.update()
+
+    def _refresh_inner():
         mobile = is_mobile(page)
         cats = get_categories()
 
@@ -213,6 +240,8 @@ def categories_view(page: ft.Page):
                                     icon_size=15 if mobile else 16,
                                     icon_color=MUTED,
                                     tooltip="Edit Category",
+                                    width=44,
+                                    height=44,
                                     on_click=lambda _, val=c: start_edit(val)
                                 ),
                                 ft.IconButton(
@@ -220,6 +249,8 @@ def categories_view(page: ft.Page):
                                     icon_size=15 if mobile else 16,
                                     icon_color=RED,
                                     tooltip="Delete Category",
+                                    width=44,
+                                    height=44,
                                     on_click=lambda _, tid=cid, name=cname: handle_delete(tid, name)
                                 ),
                             ], spacing=0)
@@ -270,5 +301,6 @@ def categories_view(page: ft.Page):
     refresh()
 
     pad_h = 12 if is_mobile(page) else 28
-    pad_v = 14 if is_mobile(page) else 24
-    return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)
+    pad_v_top = 14 if is_mobile(page) else 24
+    pad_v_bottom = 84 if is_mobile(page) else 24
+    return ft.Container(root, padding=padding_box(horizontal=pad_h, top=pad_v_top, bottom=pad_v_bottom), expand=True, bgcolor=BG)

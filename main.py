@@ -1,15 +1,4 @@
-import os
 import sys
-import tempfile
-
-# Configure writable cache directory for matplotlib on Android/embedded runtimes
-if "MPLCONFIGDIR" not in os.environ:
-    try:
-        mpl_dir = os.path.join(tempfile.gettempdir(), "matplotlib")
-        os.makedirs(mpl_dir, exist_ok=True)
-        os.environ["MPLCONFIGDIR"] = mpl_dir
-    except Exception:
-        pass
 
 import flet as ft
 
@@ -22,8 +11,8 @@ from views.categories import categories_view
 from views.settings_view import settings_view
 from views.dialogs import open_transaction_dialog
 from utils.responsive import (
-    BG, CARD, TEXT, MUTED, BORDER, BLUE, BLUE_LIGHT, GREEN,
-    is_mobile, padding_box, card_border
+    BG, CARD, TEXT, MUTED, BORDER, BLUE, BLUE_LIGHT,
+    is_mobile, padding_box
 )
 
 def main(page: ft.Page):
@@ -42,6 +31,17 @@ def main(page: ft.Page):
             page.window.min_height = 480
     except Exception:
         pass
+
+    # Android Back / Escape key dismisses open dialogs first
+    def on_keyboard(e):
+        if getattr(e, "key", None) in ("Escape", "Back", "GoBack"):
+            try:
+                if hasattr(page, "_dialogs") and any(getattr(dlg, "open", False) for dlg in page._dialogs.controls):
+                    page.pop_dialog()
+            except Exception:
+                pass
+
+    page.on_keyboard_event = on_keyboard
 
     # Active tab state: 0=Dashboard, 1=Transactions, 2=Accounts, 3=Reports, 4=Categories, 5=Settings
     state = {
@@ -75,23 +75,47 @@ def main(page: ft.Page):
         render_current_view()
 
     def render_current_view():
-        tab = state["current_tab"]
-        if tab == 0:
-            view = dashboard_view(page, on_navigate=navigate_to)
-        elif tab == 1:
-            view = transactions_view(page)
-        elif tab == 2:
-            view = accounts_view(page)
-        elif tab == 3:
-            view = reports_view(page)
-        elif tab == 4:
-            view = categories_view(page)
-        elif tab == 5:
-            view = settings_view(page, on_data_restored_callback=lambda: navigate_to(0))
-        else:
-            view = dashboard_view(page, on_navigate=navigate_to)
+        try:
+            tab = state["current_tab"]
+            if tab == 0:
+                view = dashboard_view(page, on_navigate=navigate_to)
+            elif tab == 1:
+                view = transactions_view(page)
+            elif tab == 2:
+                view = accounts_view(page)
+            elif tab == 3:
+                view = reports_view(page)
+            elif tab == 4:
+                view = categories_view(page)
+            elif tab == 5:
+                view = settings_view(page, on_data_restored_callback=lambda: navigate_to(0))
+            else:
+                view = dashboard_view(page, on_navigate=navigate_to)
 
-        content_area.content = view
+            content_area.content = view
+        except Exception as exc:
+            from utils.observability import METRICS
+            METRICS.record_error("main.render_current_view", str(exc))
+            content_area.content = ft.Container(
+                ft.Column([
+                    ft.Row([
+                        ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="#D65B67", size=22),
+                        ft.Text("View Failed to Load", size=16, weight=ft.FontWeight.BOLD, color="#D65B67"),
+                    ], spacing=8),
+                    ft.Text(str(exc)[:250], size=12, color=MUTED),
+                    ft.ElevatedButton(
+                        "Retry",
+                        icon=ft.Icons.REFRESH_ROUNDED,
+                        on_click=lambda _: render_current_view(),
+                        style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", padding=padding_box(14, 10))
+                    )
+                ], spacing=10),
+                padding=20,
+                bgcolor="#FFF5F6",
+                border_radius=12,
+                alignment=ft.Alignment(0, 0)
+            )
+
         update_navigation_chrome()
         page.update()
 
@@ -159,13 +183,13 @@ def main(page: ft.Page):
                 value=str(state["current_tab"]),
                 options=[ft.dropdown.Option(key=str(idx), text=label) for idx, label in NAV_ITEMS],
                 on_select=lambda e: navigate_to(int(e.control.value)),
-                width=135,
+                width=120,
                 dense=True,
                 text_size=12,
                 border_color=BORDER,
                 border_radius=8,
                 bgcolor=CARD,
-                content_padding=padding_box(horizontal=10, vertical=6)
+                content_padding=padding_box(horizontal=8, vertical=6)
             )
 
             add_btn = ft.IconButton(
@@ -173,6 +197,8 @@ def main(page: ft.Page):
                 bgcolor=BLUE,
                 icon_color="#FFFFFF",
                 icon_size=18,
+                width=44,
+                height=44,
                 tooltip="Add Transaction",
                 on_click=lambda _: open_transaction_dialog(page, on_success_callback=render_current_view)
             )

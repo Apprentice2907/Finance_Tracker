@@ -1,18 +1,20 @@
 import datetime
-import calendar
 import flet as ft
 
-from db.transactions import get_totals, get_category_totals, get_monthly_totals
-from charts.cashflow_chart import build_cashflow_chart
-from charts.category_pie import build_category_pie
+from db.transactions import get_totals, get_category_totals
+# charts imported lazily inside _safe_* wrappers for Android compatibility
 from utils.responsive import (
-    BG, CARD, TEXT, MUTED, BORDER, BLUE, GREEN, RED, AMBER,
+    BG, CARD, TEXT, MUTED, BORDER, BLUE, GREEN, RED,
     is_mobile, padding_box, card_border, soft_color, format_currency, format_percent_change
 )
 from utils.period_helper import (
     PERIOD_OPTIONS, get_period_dates, get_previous_period_dates
 )
 from views.dialogs import open_custom_date_dialog
+
+from charts.cashflow_chart import build_cashflow_chart
+from charts.category_pie import build_category_pie
+
 
 def reports_view(page: ft.Page):
     state = {
@@ -141,6 +143,28 @@ def reports_view(page: ft.Page):
         return ft.Column(cards, spacing=8)
 
     def refresh():
+        try:
+            _refresh_inner()
+        except Exception as _exc:
+            from utils.observability import METRICS
+            METRICS.record_error("reports.refresh", str(_exc))
+            _err = ft.Container(
+                ft.Column([
+                    ft.Row([
+                        ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="#D65B67", size=18),
+                        ft.Text("Reports failed to load", size=14, weight=ft.FontWeight.BOLD, color="#D65B67"),
+                    ], spacing=8),
+                    ft.Text(str(_exc)[:200], size=11, color="#7A8494"),
+                    ft.ElevatedButton("Retry", on_click=lambda _: refresh(), style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", padding=padding_box(14, 10)))
+                ], spacing=6),
+                padding=14,
+                bgcolor="#FFF5F6",
+                border_radius=10
+            )
+            root.controls = [_err]
+            page.update()
+
+    def _refresh_inner():
         start_d, end_d, human_label = current_dates()
         prev_s, prev_e, prev_label = previous_dates()
 
@@ -210,7 +234,7 @@ def reports_view(page: ft.Page):
             ft.Column([
                 ft.Text("Expense Breakdown", size=15, weight=ft.FontWeight.BOLD, color=TEXT),
                 ft.Text(human_label, size=11, color=MUTED),
-                ft.Container(build_category_pie("expense", start_d, end_d, is_mobile=mobile), alignment=ft.Alignment(0, 0)),
+                ft.Container(build_category_pie("expense", start_d, end_d, mobile), alignment=ft.Alignment(0, 0)),
                 category_breakdown_list("expense", start_d, end_d)
             ], spacing=10),
             expand=1 if not mobile else None
@@ -220,7 +244,7 @@ def reports_view(page: ft.Page):
             ft.Column([
                 ft.Text("Income Sources", size=15, weight=ft.FontWeight.BOLD, color=TEXT),
                 ft.Text(human_label, size=11, color=MUTED),
-                ft.Container(build_category_pie("income", start_d, end_d, is_mobile=mobile), alignment=ft.Alignment(0, 0)),
+                ft.Container(build_category_pie("income", start_d, end_d, mobile), alignment=ft.Alignment(0, 0)),
                 category_breakdown_list("income", start_d, end_d)
             ], spacing=10),
             expand=1 if not mobile else None
@@ -237,7 +261,7 @@ def reports_view(page: ft.Page):
                 ft.Text("Annual Cashflow Comparison", size=15, weight=ft.FontWeight.BOLD, color=TEXT),
                 ft.Text(f"Year {state['selected_year']} monthly trends", size=11, color=MUTED),
                 ft.Container(
-                    build_cashflow_chart("expense", state["selected_year"], is_mobile=mobile),
+                    build_cashflow_chart("expense", state["selected_year"], mobile),
                     height=200 if mobile else 250,
                     width=float("inf"),
                     padding=padding_box(top=6)
@@ -256,5 +280,6 @@ def reports_view(page: ft.Page):
     refresh()
 
     pad_h = 12 if is_mobile(page) else 28
-    pad_v = 14 if is_mobile(page) else 24
-    return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)
+    pad_v_top = 14 if is_mobile(page) else 24
+    pad_v_bottom = 84 if is_mobile(page) else 24
+    return ft.Container(root, padding=padding_box(horizontal=pad_h, top=pad_v_top, bottom=pad_v_bottom), expand=True, bgcolor=BG)

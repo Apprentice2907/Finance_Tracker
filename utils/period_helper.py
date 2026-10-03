@@ -1,6 +1,6 @@
 import calendar
 import datetime
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional
 
 PERIOD_OPTIONS = [
     ("today", "Today"),

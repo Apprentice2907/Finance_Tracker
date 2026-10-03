@@ -1,6 +1,6 @@
 import collections
 from db.database import get_connection
-from utils.observability import METRICS, trace_operation
+from utils.observability import METRICS
 
 # In-Memory Bounded LRU Query Cache (Max 128 entries)
 class LRUQueryCache:

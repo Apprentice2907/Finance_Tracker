@@ -1,13 +1,13 @@
 import flet as ft
 from db.accounts import (
-    ACCOUNT_TYPES, get_accounts, get_account,
+    ACCOUNT_TYPES, get_accounts,
     update_account, update_account_balance, delete_account,
     get_total_balance, get_balances_by_type
 )
 from db.categories import CATEGORY_COLORS
 from utils.responsive import (
     BG, CARD, TEXT, MUTED, BORDER, BLUE, GREEN, RED,
-    is_mobile, padding_box, card_border, soft_color, format_currency
+    is_mobile, padding_box, card_border, soft_color, format_currency, show_snackbar
 )
 
 TYPE_ICONS = {
@@ -123,6 +123,7 @@ def accounts_view(page: ft.Page):
                     color=modal_state["color"]
                 )
                 page.pop_dialog()
+                show_snackbar(page, f"Account '{name_val}' updated")
                 refresh()
             except Exception as ex:
                 error_msg.value = f"Failed to save: {str(ex)}"
@@ -140,12 +141,12 @@ def accounts_view(page: ft.Page):
                     acc_num_input,
                     error_msg
                 ], spacing=12, tight=True, scroll=ft.ScrollMode.AUTO),
-                width=380 if not is_mobile(page) else None,
+                width=380 if not is_mobile(page) else min(320, (page.width or 360) - 36),
                 padding=padding_box(4, 4)
             ),
             actions=[
-                ft.TextButton("Cancel", on_click=lambda _: page.pop_dialog(), style=ft.ButtonStyle(color=MUTED)),
-                ft.ElevatedButton("Save Changes", on_click=save_account, style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", shape=ft.RoundedRectangleBorder(radius=8))),
+                ft.TextButton("Cancel", on_click=lambda _: page.pop_dialog(), style=ft.ButtonStyle(color=MUTED, padding=padding_box(16, 12))),
+                ft.ElevatedButton("Save Changes", on_click=save_account, style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", padding=padding_box(16, 12), shape=ft.RoundedRectangleBorder(radius=8))),
             ],
             actions_alignment=ft.MainAxisAlignment.END
         )
@@ -169,6 +170,7 @@ def accounts_view(page: ft.Page):
                 new_bal = float(bal_input.value.strip())
                 update_account_balance(acc_id, new_bal)
                 page.pop_dialog()
+                show_snackbar(page, f"Balance updated for '{acc_name}'")
                 refresh()
             except ValueError:
                 err_text.value = "Enter a valid numeric balance."
@@ -197,6 +199,7 @@ def accounts_view(page: ft.Page):
         def do_delete(_):
             delete_account(acc_id)
             page.pop_dialog()
+            show_snackbar(page, f"Account '{acc_name}' deleted")
             refresh()
 
         dialog = ft.AlertDialog(
@@ -212,6 +215,28 @@ def accounts_view(page: ft.Page):
         page.show_dialog(dialog)
 
     def render():
+        try:
+            _render_inner()
+        except Exception as _exc:
+            from utils.observability import METRICS
+            METRICS.record_error("accounts.render", str(_exc))
+            _err = ft.Container(
+                ft.Column([
+                    ft.Row([
+                        ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="#D65B67", size=18),
+                        ft.Text("Accounts failed to load", size=14, weight=ft.FontWeight.BOLD, color="#D65B67"),
+                    ], spacing=8),
+                    ft.Text(str(_exc)[:200], size=11, color="#7A8494"),
+                    ft.ElevatedButton("Retry", on_click=lambda _: render(), style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", padding=padding_box(14, 10)))
+                ], spacing=6),
+                padding=14,
+                bgcolor="#FFF5F6",
+                border_radius=10
+            )
+            root.controls = [_err]
+            page.update()
+
+    def _render_inner():
         mobile = is_mobile(page)
         accounts = get_accounts()
         total_balance = get_total_balance()
@@ -416,5 +441,6 @@ def accounts_view(page: ft.Page):
     render()
     
     pad_h = 12 if is_mobile(page) else 28
-    pad_v = 14 if is_mobile(page) else 24
-    return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)
+    pad_v_top = 14 if is_mobile(page) else 24
+    pad_v_bottom = 84 if is_mobile(page) else 24
+    return ft.Container(root, padding=padding_box(horizontal=pad_h, top=pad_v_top, bottom=pad_v_bottom), expand=True, bgcolor=BG)

@@ -9,6 +9,7 @@ env/
 
 # Python caches
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 *.egg-info/
@@ -17,6 +18,7 @@ build/
 
 # Local databases & testing artifacts
 *.db
+test_*.db
 finance.db
 finance_test.db
 finance_bench_*.db
@@ -24,6 +26,7 @@ finance_bench_*.db
 *.db-shm
 *.bak
 *.tmp
+fake_android_storage/
 
 # Generated benchmark & temporary files
 benchmarks/datasets/*.db

@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import sys
 
 def get_db_path():
     """
@@ -12,8 +11,12 @@ def get_db_path():
         return env_db
 
     flet_storage = os.environ.get("FLET_APP_STORAGE_DATA")
-    if flet_storage and os.path.exists(flet_storage):
-        return os.path.join(flet_storage, "finance.db")
+    if flet_storage:
+        try:
+            os.makedirs(flet_storage, exist_ok=True)
+            return os.path.join(flet_storage, "finance.db")
+        except Exception:
+            pass
     
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     local_db = os.path.join(base_dir, "finance.db")

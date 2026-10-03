@@ -7,8 +7,7 @@ Contains zero real personal data or external account information.
 """
 
 import random
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 from db.database import get_db_connection
 from db.categories import get_categories, create_category
 

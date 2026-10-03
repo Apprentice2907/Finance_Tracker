@@ -1,8 +1,5 @@
-import sqlite3
-import os
 from typing import Dict, Any
 from db.database import get_connection, get_db_path
-from db.aggregate_validator import validate_aggregate_consistency
 from db.transactions import invalidate_cache
 
 def rebuild_daily_aggregates(db_path: str = None) -> Dict[str, Any]:

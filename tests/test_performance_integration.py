@@ -1,16 +1,7 @@
-import os
-import sys
-import sqlite3
 import datetime
-
-# Ensure project root is in sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from db.database import init_db, get_connection
 from db.transactions import (
-    add_transaction, update_transaction, delete_transaction,
-    get_totals, get_category_totals, get_monthly_totals,
-    bulk_insert_transactions, _QUERY_CACHE
+    add_transaction, get_totals, _QUERY_CACHE
 )
 
 def test_pre_aggregate_consistency():

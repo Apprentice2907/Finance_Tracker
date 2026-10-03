@@ -1,8 +1,7 @@
 import datetime
-import calendar
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from db.database import get_connection, get_db_path
-from db.transactions import get_totals, get_category_totals
+from db.transactions import get_category_totals
 
 def generate_financial_insights(db_path: str = None) -> List[Dict[str, Any]]:
     """

@@ -1,7 +1,6 @@
 import unittest
 import sqlite3
 import os
-import shutil
 
 class TestCrashConsistency(unittest.TestCase):
     def setUp(self):

@@ -103,3 +103,20 @@ def format_percent_change(current: float, previous: float):
         return (f"+{pct:.1f}%", GREEN, ft.Icons.ARROW_UPWARD_ROUNDED)
     else:
         return (f"{pct:.1f}%", RED, ft.Icons.ARROW_DOWNWARD_ROUNDED)
+
+def show_snackbar(page: ft.Page, message: str, is_error: bool = False):
+    """Displays a floating, mobile-friendly SnackBar for user action feedback."""
+    if not page:
+        return
+    try:
+        snack = ft.SnackBar(
+            content=ft.Text(message, color="#FFFFFF", size=13),
+            bgcolor=RED if is_error else "#1E293B",
+            behavior=ft.SnackBarBehavior.FLOATING,
+            duration=ft.Duration(milliseconds=2800),
+            show_close_icon=True
+        )
+        page.show_dialog(snack)
+    except Exception:
+        pass
+

@@ -2,23 +2,25 @@ import datetime
 import calendar
 import flet as ft
 
-from charts.cashflow_chart import build_cashflow_chart
-from charts.category_pie import build_category_pie
-from db.categories import CATEGORY_COLORS, get_categories
 from db.transactions import (
     get_totals, get_category_totals, get_transactions,
-    get_monthly_totals, delete_transaction
+    delete_transaction
 )
 from utils.responsive import (
-    BG, CARD, TEXT, MUTED, BORDER, BLUE, BLUE_LIGHT, GREEN, GREEN_LIGHT, RED, RED_LIGHT, AMBER,
-    is_mobile, is_desktop, padding_box, card_border, soft_color,
-    format_currency, format_percent_change
+    BG, CARD, TEXT, MUTED, BORDER, BLUE, GREEN, RED,
+    is_mobile, padding_box, card_border, soft_color,
+    format_currency, format_percent_change, show_snackbar
 )
 from utils.period_helper import (
     PERIOD_OPTIONS, get_period_dates, get_previous_period_dates
 )
 from utils.insights import generate_financial_insights
 from views.dialogs import open_transaction_dialog, open_custom_date_dialog
+
+
+from charts.cashflow_chart import build_cashflow_chart
+from charts.category_pie import build_category_pie
+
 
 def dashboard_view(page: ft.Page, on_navigate=None):
     # Reactive state
@@ -177,8 +179,12 @@ def dashboard_view(page: ft.Page, on_navigate=None):
             )
         return ft.Column(items, spacing=6)
 
-    def recent_transactions_list(start_date, end_date):
-        rows = get_transactions(start_date, end_date, limit=6)
+    def recent_transactions_list(start_date, end_date, mob):
+        """Renders up to 6 recent transactions. `mob` must be passed explicitly by caller."""
+        try:
+            rows = get_transactions(start_date, end_date, limit=6)
+        except Exception:
+            rows = []
         if not rows:
             return ft.Container(
                 ft.Column([
@@ -195,7 +201,6 @@ def dashboard_view(page: ft.Page, on_navigate=None):
             t_id = row[0]
             t_type = row[1]
             t_amt = row[2]
-            _ = row[3]
             t_cat = row[4]
             t_date = row[5]
             t_note = row[6]
@@ -219,38 +224,42 @@ def dashboard_view(page: ft.Page, on_navigate=None):
                 ft.Container(
                     ft.Row([
                         ft.Container(
-                            ft.Icon(icon_name, size=15 if mobile else 16, color=icon_col),
+                            ft.Icon(icon_name, size=15 if mob else 16, color=icon_col),
                             bgcolor=soft_color(icon_col),
-                            padding=6 if mobile else 8,
+                            padding=6 if mob else 8,
                             border_radius=8
                         ),
                         ft.Column([
                             ft.Row([
-                                ft.Container(width=6 if mobile else 7, height=6 if mobile else 7, bgcolor=t_color, border_radius=4),
-                                ft.Text(display_title, weight=ft.FontWeight.W_600, color=TEXT, size=12 if mobile else 13, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
+                                ft.Container(width=6 if mob else 7, height=6 if mob else 7, bgcolor=t_color, border_radius=4),
+                                ft.Text(display_title, weight=ft.FontWeight.W_600, color=TEXT, size=12 if mob else 13, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
                             ], spacing=6),
-                            ft.Text(subtitle_text, size=10 if mobile else 11, color=MUTED, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
+                            ft.Text(subtitle_text, size=10 if mob else 11, color=MUTED, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, max_lines=1),
                         ], spacing=2, expand=True),
                         ft.Text(
                             ("+ " if is_inc else "− ") + format_currency(t_amt),
                             color=icon_col,
                             weight=ft.FontWeight.BOLD,
-                            size=12 if mobile else 13,
+                            size=12 if mob else 13,
                             no_wrap=True
                         ),
                         ft.IconButton(
                             ft.Icons.EDIT_OUTLINED,
-                            icon_size=15 if mobile else 16,
+                            icon_size=15 if mob else 16,
                             icon_color=MUTED,
                             tooltip="Edit",
+                            width=44,
+                            height=44,
                             on_click=lambda _, r=row: open_transaction_dialog(page, refresh, r)
                         ),
                         ft.IconButton(
                             ft.Icons.DELETE_OUTLINE,
-                            icon_size=15 if mobile else 16,
+                            icon_size=15 if mob else 16,
                             icon_color=RED,
                             tooltip="Delete",
-                            on_click=lambda _, tid=t_id: (delete_transaction(tid), refresh())
+                            width=44,
+                            height=44,
+                            on_click=lambda _, tid=t_id: (delete_transaction(tid), show_snackbar(page, "Transaction deleted"), refresh())
                         )
                     ], vertical_alignment=ft.CrossAxisAlignment.CENTER),
                     padding=padding_box(vertical=8),
@@ -298,6 +307,29 @@ def dashboard_view(page: ft.Page, on_navigate=None):
         refresh()
 
     def refresh():
+        try:
+            _refresh_inner()
+        except Exception as exc:
+            from utils.observability import METRICS
+            METRICS.record_error("dashboard.refresh", str(exc))
+            err_banner = ft.Container(
+                ft.Column([
+                    ft.Row([
+                        ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color=RED, size=18),
+                        ft.Text("Dashboard failed to load", size=14, weight=ft.FontWeight.BOLD, color=RED),
+                    ], spacing=8),
+                    ft.Text(str(exc)[:200], size=11, color=MUTED),
+                    ft.ElevatedButton("Retry", on_click=lambda _: refresh(), style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", padding=padding_box(14, 10)))
+                ], spacing=6),
+                padding=14,
+                bgcolor="#FFF5F6",
+                border=card_border(RED),
+                border_radius=10
+            )
+            root.controls = [err_banner]
+            page.update()
+
+    def _refresh_inner():
         start_d, end_d, human_label = current_dates()
         prev_s, prev_e, prev_label = previous_dates()
 
@@ -358,7 +390,7 @@ def dashboard_view(page: ft.Page, on_navigate=None):
                     chart_toggle()
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                 ft.Container(
-                    build_cashflow_chart(state["chart_type"], state["selected_year"], is_mobile=mobile),
+                    build_cashflow_chart(state["chart_type"], state["selected_year"], mobile),
                     height=200 if mobile else 250,
                     width=float("inf"),
                     padding=padding_box(top=6)
@@ -372,7 +404,7 @@ def dashboard_view(page: ft.Page, on_navigate=None):
                 ft.Text("Category Breakdown", size=15, weight=ft.FontWeight.BOLD, color=TEXT),
                 ft.Text(f"{state['chart_type'].title()}s in period", size=11, color=MUTED),
                 ft.Container(
-                    build_category_pie(state["chart_type"], start_d, end_d, is_mobile=mobile),
+                    build_category_pie(state["chart_type"], start_d, end_d, mobile),
                     alignment=ft.Alignment(0, 0)
                 ),
                 top_categories_widget(start_d, end_d)
@@ -408,7 +440,7 @@ def dashboard_view(page: ft.Page, on_navigate=None):
                         )
                     )
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                recent_transactions_list(start_d, end_d)
+                recent_transactions_list(start_d, end_d, mobile)
             ], spacing=10)
         )
 
@@ -492,5 +524,6 @@ def dashboard_view(page: ft.Page, on_navigate=None):
     refresh()
     
     pad_h = 12 if is_mobile(page) else 28
-    pad_v = 14 if is_mobile(page) else 24
-    return ft.Container(root, padding=padding_box(pad_h, pad_v), expand=True, bgcolor=BG)
+    pad_v_top = 14 if is_mobile(page) else 24
+    pad_v_bottom = 84 if is_mobile(page) else 24
+    return ft.Container(root, padding=padding_box(horizontal=pad_h, top=pad_v_top, bottom=pad_v_bottom), expand=True, bgcolor=BG)

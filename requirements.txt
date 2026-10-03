@@ -1,4 +1,7 @@
 # Core Application Dependencies
-flet>=0.86.0
+flet==0.86.5
+flet-charts==0.86.5
 openpyxl>=3.1.2
-matplotlib>=3.8.0
+
+# Optional: Desktop diagnostics only (NOT included in Android APK build)
+# psutil>=5.9.0

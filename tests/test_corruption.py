@@ -1,11 +1,9 @@
 import unittest
 import os
-import sqlite3
 from db.database import init_db, get_connection
 from db.transactions import add_transaction
 from db.health import check_database_health
 from db.aggregate_validator import validate_aggregate_consistency
-from db.rebuild import rebuild_daily_aggregates
 
 class TestDataCorruption(unittest.TestCase):
     def setUp(self):

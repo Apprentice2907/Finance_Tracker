@@ -1,10 +1,7 @@
 import unittest
 import os
-import random
-import string
 from db.database import init_db, get_connection
 from db.transactions import add_transaction, get_transactions, get_totals
-from db.categories import add_category, get_category_by_name
 
 class TestFuzzing(unittest.TestCase):
     @classmethod
@@ -81,7 +78,7 @@ class TestFuzzing(unittest.TestCase):
                 # Must either succeed or raise handled ValueError, never corrupt DB
                 add_transaction("expense", 10.0, 1, d, "Fuzz date")
                 get_totals(start_date=d, end_date=d)
-            except Exception as e:
+            except Exception:
                 # Should not be an uncaught internal SQLite fatal error
                 pass
 

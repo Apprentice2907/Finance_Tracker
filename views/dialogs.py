@@ -1,12 +1,11 @@
 import datetime
-import calendar
 import flet as ft
 
 from db.categories import get_categories
 from db.transactions import add_transaction, update_transaction
 from utils.responsive import (
-    BLUE, CARD, TEXT, MUTED, BORDER, GREEN, RED,
-    is_mobile, padding_box, card_border
+    BLUE, CARD, TEXT, MUTED, BORDER, RED,
+    is_mobile, padding_box, show_snackbar
 )
 
 def parse_picker_date(val, raw_data=None) -> str:
@@ -142,7 +141,6 @@ def open_transaction_dialog(page: ft.Page, on_success_callback=None, transaction
 
     # Type switcher buttons
     def segmented_btn(label, is_active, on_click):
-        color = GREEN if label == "Income" else RED
         return ft.TextButton(
             label,
             on_click=on_click,
@@ -206,14 +204,22 @@ def open_transaction_dialog(page: ft.Page, on_success_callback=None, transaction
             icon=ft.Icons.CALENDAR_MONTH_OUTLINED,
             icon_color=BLUE,
             tooltip="Pick Date",
+            width=48,
+            height=48,
             on_click=open_date_picker
         )
     ], spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
     def close_dialog():
-        if date_picker in page.overlay:
-            page.overlay.remove(date_picker)
-        page.pop_dialog()
+        try:
+            if date_picker in page.overlay:
+                page.overlay.remove(date_picker)
+        except Exception:
+            pass
+        try:
+            page.pop_dialog()
+        except Exception:
+            pass
 
     def handle_save(_):
         amt_str = amount_input.value.strip() if amount_input.value else ""
@@ -251,8 +257,14 @@ def open_transaction_dialog(page: ft.Page, on_success_callback=None, transaction
             return
 
         close_dialog()
+        show_snackbar(page, "Transaction updated successfully" if editing_id else "Transaction saved successfully")
         if on_success_callback:
             on_success_callback()
+
+    page_w = page.width if (page and page.width) else 360
+    page_h = page.height if (page and page.height) else 640
+    dialog_w = 380 if not mobile else min(320, page_w - 36)
+    dialog_max_h = 460 if not mobile else min(380, page_h * 0.65)
 
     content_box = ft.Container(
         ft.Column([
@@ -263,8 +275,9 @@ def open_transaction_dialog(page: ft.Page, on_success_callback=None, transaction
             date_row,
             note_input,
             error_text
-        ], spacing=12, tight=True, scroll=ft.ScrollMode.AUTO),
-        width=380 if not mobile else None,
+        ], spacing=10, tight=True, scroll=ft.ScrollMode.AUTO),
+        width=dialog_w,
+        height=dialog_max_h if mobile else None,
         padding=padding_box(4, 4)
     )
 
@@ -275,8 +288,24 @@ def open_transaction_dialog(page: ft.Page, on_success_callback=None, transaction
         title=ft.Text(action_label, weight=ft.FontWeight.BOLD, size=18, color=TEXT),
         content=content_box,
         actions=[
-            ft.TextButton("Cancel", on_click=lambda _: close_dialog(), style=ft.ButtonStyle(color=MUTED)),
-            ft.ElevatedButton(action_label, on_click=handle_save, style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", shape=ft.RoundedRectangleBorder(radius=8))),
+            ft.TextButton(
+                "Cancel",
+                on_click=lambda _: close_dialog(),
+                style=ft.ButtonStyle(
+                    color=MUTED,
+                    padding=padding_box(16, 12)
+                )
+            ),
+            ft.ElevatedButton(
+                action_label,
+                on_click=handle_save,
+                style=ft.ButtonStyle(
+                    bgcolor=BLUE,
+                    color="#FFFFFF",
+                    padding=padding_box(16, 12),
+                    shape=ft.RoundedRectangleBorder(radius=8)
+                )
+            ),
         ],
         actions_alignment=ft.MainAxisAlignment.END
     )
@@ -330,21 +359,24 @@ def open_custom_date_dialog(page: ft.Page, current_start: str, current_end: str,
         page.pop_dialog()
         on_apply_callback(start_state["val"], end_state["val"])
 
+    page_w = page.width if (page and page.width) else 360
+    custom_dialog_w = 360 if not is_mobile(page) else min(320, page_w - 36)
+
     dialog = ft.AlertDialog(
         modal=True,
         bgcolor=CARD,
         title=ft.Text("Custom Date Range", weight=ft.FontWeight.BOLD, size=17, color=TEXT),
         content=ft.Container(
             ft.Column([
-                ft.Row([start_input, ft.IconButton(ft.Icons.CALENDAR_MONTH_OUTLINED, on_click=open_start_p, icon_color=BLUE)]),
-                ft.Row([end_input, ft.IconButton(ft.Icons.CALENDAR_MONTH_OUTLINED, on_click=open_end_p, icon_color=BLUE)]),
+                ft.Row([start_input, ft.IconButton(ft.Icons.CALENDAR_MONTH_OUTLINED, on_click=open_start_p, icon_color=BLUE, width=48, height=48)]),
+                ft.Row([end_input, ft.IconButton(ft.Icons.CALENDAR_MONTH_OUTLINED, on_click=open_end_p, icon_color=BLUE, width=48, height=48)]),
                 err
             ], tight=True, spacing=12),
-            width=360
+            width=custom_dialog_w
         ),
         actions=[
-            ft.TextButton("Cancel", on_click=lambda _: page.pop_dialog(), style=ft.ButtonStyle(color=MUTED)),
-            ft.ElevatedButton("Apply Range", on_click=apply_range, style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", shape=ft.RoundedRectangleBorder(radius=8)))
+            ft.TextButton("Cancel", on_click=lambda _: page.pop_dialog(), style=ft.ButtonStyle(color=MUTED, padding=padding_box(16, 12))),
+            ft.ElevatedButton("Apply Range", on_click=apply_range, style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", padding=padding_box(16, 12), shape=ft.RoundedRectangleBorder(radius=8)))
         ]
     )
     page.show_dialog(dialog)
@@ -377,22 +409,25 @@ def open_onboarding_dialog(page: ft.Page):
             )
         )
 
+    page_w = page.width if (page and page.width) else 360
+    onboard_w = 400 if not is_mobile(page) else min(320, page_w - 36)
+
     dialog = ft.AlertDialog(
         modal=True,
         bgcolor=CARD,
         title=ft.Row([
             ft.Icon(ft.Icons.SAVINGS_ROUNDED, color=BLUE, size=26),
-            ft.Text("Welcome to Finance Tracker", weight=ft.FontWeight.BOLD, size=18, color=TEXT)
+            ft.Text("Welcome", weight=ft.FontWeight.BOLD, size=18, color=TEXT)
         ], spacing=10),
         content=ft.Container(
             ft.Column(items, tight=True, spacing=8),
-            width=400
+            width=onboard_w
         ),
         actions=[
             ft.ElevatedButton(
                 "Get Started",
                 on_click=lambda _: page.pop_dialog(),
-                style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", shape=ft.RoundedRectangleBorder(radius=8))
+                style=ft.ButtonStyle(bgcolor=BLUE, color="#FFFFFF", padding=padding_box(16, 12), shape=ft.RoundedRectangleBorder(radius=8))
             )
         ]
     )
