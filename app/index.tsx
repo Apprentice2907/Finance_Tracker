@@ -48,9 +48,33 @@ import { ConfirmSheet } from '../src/ui/ConfirmSheet';
 import { parseUtterance, ParseResult } from '../src/parser';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { useRouter } from 'expo-router';
+import { ExpoSpeechService } from '../src/speech/ExpoSpeechService';
 
 function HomeContent() {
   const router = useRouter();
+  const [isSpeechAvailable, setIsSpeechAvailable] = useState(Platform.OS !== 'web');
+
+  useEffect(() => {
+    let cancelled = false;
+    if (Platform.OS === 'web') {
+      try {
+        const speech = new ExpoSpeechService();
+        speech
+          .isAvailable()
+          .then((avail) => {
+            if (!cancelled && avail) {
+              setIsSpeechAvailable(true);
+            }
+          })
+          .catch(() => {});
+      } catch {
+        // Speech unavailable on this web browser; remains false
+      }
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const {
     groupedTransactions,
     currentMonthTotals,
@@ -139,6 +163,10 @@ function HomeContent() {
   }));
 
   const openVoiceAdd = () => {
+    if (Platform.OS === 'web' && !isSpeechAvailable) {
+      openTypeAdd();
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setVoiceSheetMode('voice');
     setVoiceSheetVisible(true);
@@ -427,17 +455,19 @@ function HomeContent() {
 
         {/* Quick Actions Row (Glass style buttons) */}
         <View style={styles.quickActions}>
-          {/* Voice Add */}
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnVoice]}
-            onPress={openVoiceAdd}
-            activeOpacity={0.8}
-          >
-            <View style={styles.btnIconWrapPrimary}>
-              <MicIcon size={15} color="#FFFFFF" />
-            </View>
-            <Text style={styles.actionBtnText}>Voice Add</Text>
-          </TouchableOpacity>
+          {/* Voice Add (hidden on web if browser speech recognition is unavailable) */}
+          {!(Platform.OS === 'web' && !isSpeechAvailable) && (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnVoice]}
+              onPress={openVoiceAdd}
+              activeOpacity={0.8}
+            >
+              <View style={styles.btnIconWrapPrimary}>
+                <MicIcon size={15} color="#FFFFFF" />
+              </View>
+              <Text style={styles.actionBtnText}>Voice Add</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Type Add */}
           <TouchableOpacity
@@ -550,18 +580,20 @@ function HomeContent() {
         )}
       </ScrollView>
 
-      {/* Docked Centered Big Mic Button with Pulsating Outer Ring */}
-      <View style={styles.dockedMicContainer} pointerEvents="box-none">
-        <Animated.View style={[styles.dockedMicGlow, micRingStyle]} />
-        <TouchableOpacity
-          style={styles.dockedMicButton}
-          onPress={openVoiceAdd}
-          activeOpacity={0.85}
-          accessibilityLabel="Record voice expense"
-        >
-          <MicIcon size={30} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+      {/* Docked Centered Big Mic Button with Pulsating Outer Ring (hidden on web if unavailable) */}
+      {!(Platform.OS === 'web' && !isSpeechAvailable) && (
+        <View style={styles.dockedMicContainer} pointerEvents="box-none">
+          <Animated.View style={[styles.dockedMicGlow, micRingStyle]} />
+          <TouchableOpacity
+            style={styles.dockedMicButton}
+            onPress={openVoiceAdd}
+            activeOpacity={0.85}
+            accessibilityLabel="Record voice expense"
+          >
+            <MicIcon size={30} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Undo Snackbar */}
       {lastDeletedTransaction && (
