@@ -11,7 +11,7 @@ import {
   BackHandler,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, radii, spacing, typography } from '../src/ui/tokens';
+import { colors, radii, spacing } from '../src/ui/tokens';
 import { useAppStore } from '../src/state/useAppStore';
 import { formatRupees } from '../src/domain/money';
 import { TransactionWithCategory, TransactionType } from '../src/domain/types';

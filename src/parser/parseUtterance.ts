@@ -418,7 +418,7 @@ export function parseUtterance(
       confidence,
       matchedKeyword,
     };
-  } catch (_err) {
+  } catch {
     return {
       type: 'expense',
       amountPaise: null,

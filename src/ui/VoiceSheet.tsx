@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -23,7 +23,7 @@ interface VoiceSheetProps {
   speechService?: SpeechService;
 }
 
-export const VoiceSheet: React.FC<VoiceSheetProps> = ({
+const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
   visible,
   initialMode = 'voice',
   onClose,
@@ -36,8 +36,46 @@ export const VoiceSheet: React.FC<VoiceSheetProps> = ({
   const [isTypingMode, setIsTypingMode] = useState(initialMode === 'typed');
   const [typedText, setTypedText] = useState('');
 
-  const serviceRef = useRef<SpeechService>(speechService || new ExpoSpeechService());
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const service = useMemo(() => speechService || new ExpoSpeechService(), [speechService]);
+  const pulseAnim = useMemo(() => new Animated.Value(1), []);
+
+  useEffect(() => {
+    let isCancelled = false;
+    if (!isTypingMode) {
+      service
+        .startListening({
+          onStateChange: (state) => {
+            if (!isCancelled) setSpeechState(state);
+          },
+          onPartialTranscript: (text) => {
+            if (!isCancelled) setPartialTranscript(text);
+          },
+          onFinalTranscript: (text) => {
+            if (!isCancelled) {
+              setSpeechState('idle');
+              onTranscriptReady(text, 'voice');
+            }
+          },
+          onError: (friendlyMsg) => {
+            if (!isCancelled) {
+              setErrorMessage(friendlyMsg);
+              setSpeechState('error');
+            }
+          },
+        })
+        .catch((err: unknown) => {
+          if (!isCancelled) {
+            setErrorMessage(err instanceof Error ? err.message : 'Speech recognition error');
+            setSpeechState('error');
+          }
+        });
+    }
+
+    return () => {
+      isCancelled = true;
+      service.abort().catch(() => {});
+    };
+  }, [isTypingMode, service, onTranscriptReady]);
 
   // Pulse animation while listening
   useEffect(() => {
@@ -67,51 +105,29 @@ export const VoiceSheet: React.FC<VoiceSheetProps> = ({
     };
   }, [speechState, pulseAnim]);
 
-  useEffect(() => {
-    if (visible) {
-      const typing = initialMode === 'typed';
-      setIsTypingMode(typing);
-      setErrorMessage(null);
-      setPartialTranscript('');
-      setTypedText('');
-      if (!typing) {
-        startVoice();
-      }
-    } else {
-      serviceRef.current.abort().catch(() => {});
-      setSpeechState('idle');
-      setPartialTranscript('');
-      setErrorMessage(null);
-    }
-  }, [visible, initialMode]);
-
-  const startVoice = async () => {
-    setErrorMessage(null);
-    setPartialTranscript('');
-
-    await serviceRef.current.startListening({
-      onStateChange: (state) => setSpeechState(state),
-      onPartialTranscript: (text) => setPartialTranscript(text),
-      onFinalTranscript: (text) => {
-        setSpeechState('idle');
-        onTranscriptReady(text, 'voice');
-      },
-      onError: (friendlyMsg) => {
-        setErrorMessage(friendlyMsg);
-        setSpeechState('error');
-      },
-    });
-  };
-
-  const stopVoice = async () => {
-    await serviceRef.current.stopListening();
-  };
-
   const handleMicPress = () => {
     if (speechState === 'listening') {
-      stopVoice();
+      service.stopListening().catch(() => {});
     } else {
-      startVoice();
+      setErrorMessage(null);
+      setPartialTranscript('');
+      service
+        .startListening({
+          onStateChange: (state) => setSpeechState(state),
+          onPartialTranscript: (text) => setPartialTranscript(text),
+          onFinalTranscript: (text) => {
+            setSpeechState('idle');
+            onTranscriptReady(text, 'voice');
+          },
+          onError: (friendlyMsg) => {
+            setErrorMessage(friendlyMsg);
+            setSpeechState('error');
+          },
+        })
+        .catch((err: unknown) => {
+          setErrorMessage(err instanceof Error ? err.message : 'Speech recognition error');
+          setSpeechState('error');
+        });
     }
   };
 
@@ -203,7 +219,7 @@ export const VoiceSheet: React.FC<VoiceSheetProps> = ({
               <TouchableOpacity
                 style={styles.typeInsteadBtn}
                 onPress={() => {
-                  serviceRef.current.abort().catch(() => {});
+                  service.abort().catch(() => {});
                   setIsTypingMode(true);
                 }}
               >
@@ -213,7 +229,7 @@ export const VoiceSheet: React.FC<VoiceSheetProps> = ({
           ) : (
             <View style={styles.typeContainer}>
               <Text style={styles.typeHint}>
-                Type naturally, e.g. "kal 100 petrol" or "add 250 lunch"
+                {'Type naturally, e.g. "kal 100 petrol" or "add 250 lunch"'}
               </Text>
 
               <TextInput
@@ -252,6 +268,11 @@ export const VoiceSheet: React.FC<VoiceSheetProps> = ({
       </KeyboardAvoidingView>
     </Modal>
   );
+};
+
+export const VoiceSheet: React.FC<VoiceSheetProps> = (props) => {
+  if (!props.visible) return null;
+  return <VoiceSheetContent {...props} />;
 };
 
 const styles = StyleSheet.create({

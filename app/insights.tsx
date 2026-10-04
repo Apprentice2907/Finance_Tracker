@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,29 +26,32 @@ function InsightsContent() {
   const [loading, setLoading] = useState(true);
   const [selectedBarIndex, setSelectedBarIndex] = useState<number | null>(null);
 
-  const loadData = useCallback(
-    async (p: 'week' | 'month') => {
-      setLoading(true);
-      try {
-        const result = await getInsightsData(p);
-        setData(result);
-        setSelectedBarIndex(null);
-      } catch (err) {
-        console.error('Failed to load insights:', err);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [getInsightsData]
-  );
-
   useEffect(() => {
-    loadData(period);
-  }, [period, loadData, groupedTransactions]);
+    let active = true;
+    getInsightsData(period)
+      .then((result) => {
+        if (active) {
+          setData(result);
+          setSelectedBarIndex(null);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          console.error('Failed to load insights:', err);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [period, getInsightsData, groupedTransactions]);
 
   const handlePeriodChange = (newPeriod: 'week' | 'month') => {
     if (newPeriod === period) return;
     Haptics.selectionAsync().catch(() => {});
+    setLoading(true);
     setPeriod(newPeriod);
   };
 
@@ -243,7 +246,7 @@ function InsightsContent() {
                   })}
                 </Svg>
               </View>
-              <Text style={styles.chartHint}>Tap any bar to see day's total</Text>
+              <Text style={styles.chartHint}>Tap any bar to see day&apos;s total</Text>
             </View>
 
             {/* Metrics Row: Average Per Day & Biggest Expense */}

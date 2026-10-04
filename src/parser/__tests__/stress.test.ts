@@ -1,9 +1,8 @@
 import { parseUtterance } from '../parseUtterance';
-import { getTodayIndia, getRelativeDateIndia } from '../../domain/dates';
+import { getRelativeDateIndia } from '../../domain/dates';
 
 describe('Parser Stress Tests: 40+ Real-Life Indian Utterances', () => {
   const FIXED_NOW = new Date('2026-10-04T12:00:00Z'); // Sunday Oct 4, 2026, 17:30 IST
-  const TODAY = getTodayIndia(FIXED_NOW);
   const YESTERDAY = getRelativeDateIndia(-1, FIXED_NOW);
   const DAY_BEFORE = getRelativeDateIndia(-2, FIXED_NOW);
 

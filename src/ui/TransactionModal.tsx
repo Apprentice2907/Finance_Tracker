@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -30,39 +30,30 @@ interface TransactionModalProps {
   defaultType?: TransactionType;
 }
 
-export const TransactionModal: React.FC<TransactionModalProps> = ({
-  visible,
+const TransactionModalForm: React.FC<Omit<TransactionModalProps, 'visible'>> = ({
   onClose,
   onSave,
   categories,
   initialTransaction,
   defaultType = 'expense',
 }) => {
-  const [type, setType] = useState<TransactionType>(defaultType);
-  const [amountStr, setAmountStr] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [note, setNote] = useState('');
-  const [dateStr, setDateStr] = useState(getTodayIndia());
+  const [type, setType] = useState<TransactionType>(
+    initialTransaction ? initialTransaction.type : defaultType
+  );
+  const [amountStr, setAmountStr] = useState(
+    initialTransaction ? String(paiseToRupees(initialTransaction.amount_paise)) : ''
+  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState(() => {
+    if (initialTransaction) return initialTransaction.category_id;
+    const defaultCat = categories.find((c) => c.kind === defaultType);
+    return defaultCat?.id || (categories[0]?.id ?? '');
+  });
+  const [note, setNote] = useState(initialTransaction ? initialTransaction.note : '');
+  const [dateStr, setDateStr] = useState(
+    initialTransaction ? initialTransaction.occurred_on : getTodayIndia()
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (initialTransaction) {
-      setType(initialTransaction.type);
-      setAmountStr(String(paiseToRupees(initialTransaction.amount_paise)));
-      setSelectedCategoryId(initialTransaction.category_id);
-      setNote(initialTransaction.note);
-      setDateStr(initialTransaction.occurred_on);
-    } else {
-      setType(defaultType);
-      setAmountStr('');
-      const defaultCat = categories.find((c) => c.kind === defaultType);
-      setSelectedCategoryId(defaultCat?.id || (categories[0]?.id ?? ''));
-      setNote('');
-      setDateStr(getTodayIndia());
-    }
-    setValidationError(null);
-  }, [initialTransaction, defaultType, visible, categories]);
 
   const filteredCategories = categories.filter((c) => c.kind === type);
 
@@ -96,18 +87,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.overlay}
-      >
-        <View style={styles.sheet}>
-          {/* Header */}
+    <View style={styles.sheet}>
+      {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>
               {initialTransaction ? 'Edit Entry' : 'Add Entry'}
@@ -272,6 +253,26 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </View>
           </ScrollView>
         </View>
+  );
+};
+
+export const TransactionModal: React.FC<TransactionModalProps> = (props) => {
+  if (!props.visible) return null;
+
+  const formKey = props.initialTransaction?.id || `new_${props.defaultType || 'expense'}`;
+
+  return (
+    <Modal
+      visible={props.visible}
+      animationType="slide"
+      transparent
+      onRequestClose={props.onClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.overlay}
+      >
+        <TransactionModalForm key={formKey} {...props} />
       </KeyboardAvoidingView>
     </Modal>
   );

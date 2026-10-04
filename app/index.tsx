@@ -9,7 +9,6 @@ import {
   StatusBar,
   Platform,
   BackHandler,
-  Dimensions,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -40,8 +39,6 @@ import { ConfirmSheet } from '../src/ui/ConfirmSheet';
 import { parseUtterance, ParseResult } from '../src/parser';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { useRouter } from 'expo-router';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
 
 function HomeContent() {
   const router = useRouter();
@@ -487,7 +484,7 @@ function HomeContent() {
             <Text style={styles.emptyEmoji}>🍃</Text>
             <Text style={styles.emptyTitle}>No expenses yet</Text>
             <Text style={styles.emptySubtitle}>
-              Tap the big mic below or "Voice Add" to speak your first expense.
+              Tap the big mic below or &quot;Voice Add&quot; to speak your first expense.
             </Text>
           </View>
         ) : (

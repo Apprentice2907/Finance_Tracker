@@ -26,4 +26,13 @@ This document records key technical decisions, assumptions, and deviations from 
 - **Cross-Platform SQLite Test Adapter**: To bypass C++ ABI compatibility issues with `better-sqlite3` under Node 22 on Windows, the test suite uses `sql.js` (WebAssembly SQLite) which mirrors SQLite behavior with zero native compilation dependencies.
 - **Custom SVG Charts**: Built using `react-native-svg` for minimal footprint and maximum control over aesthetics.
 - **Haptics & Animations**: `expo-haptics` and `react-native-reanimated` for smooth micro-interactions.
-
+## 5. Backup, Builds & Release
+- **Single-File JSON Backup**: Backups are self-contained JSON files named `wini-backup-YYYY-MM-DD.json`. Every backup file contains an explicit envelope (`app: 'wini'`, `schemaVersion: 1`, `exported_at`), transaction records, categories, and learned keywords.
+- **Strict Schema Validation**: To prevent database corruption or malicious file injection, `validateBackupSchema` rigorously validates that all IDs are strings, timestamps are ISO-8601 formatted, and amounts are non-negative integers representing paise. Corrupted or invalid payloads are rejected with clear error messages before touching SQLite.
+- **Merge vs Replace Semantics**:
+  - `Replace`: Cleans active transaction and keyword tables, replacing them with the backup's exact snapshot. System default categories are preserved or restored.
+  - `Merge`: Inserts records from the backup if they do not exist; if a transaction with the same ID exists, it updates only if the backup's timestamp is newer.
+- **Android Scoped Storage & Sharing**: To comply with Android 11+ (API 30+) scoped storage restrictions, file export writes the JSON to `FileSystem.cacheDirectory` via `expo-file-system/legacy` and immediately invokes the Android system share sheet via `expo-sharing`. This allows users to save to Google Drive, WhatsApp, Downloads, or local files without requiring dangerous `WRITE_EXTERNAL_STORAGE` permissions.
+- **EAS Build Architecture**:
+  - `development` profile: Produces an internal Android APK with `expo-dev-client` for live debugging of native modules (`expo-speech-recognition`, `expo-sqlite`, `expo-haptics`).
+  - `preview` profile: Produces a standalone standalone release-ready APK for direct distribution and sideloading on physical devices.

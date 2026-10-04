@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -53,33 +53,36 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
   onEdit,
   onClose,
 }) => {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [originalCategoryName, setOriginalCategoryName] = useState<string | null>(null);
+  const [userSelectedCategoryId, setUserSelectedCategoryId] = useState<string | null>(null);
+  const [selectedCategoryTarget, setSelectedCategoryTarget] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (parsed) {
-      setOriginalCategoryName(parsed.category);
-      if (parsed.category) {
-        const found = categories.find(
-          (c) => c.name.toLowerCase() === parsed.category?.toLowerCase()
-        );
-        if (found) {
-          setSelectedCategoryId(found.id);
-        } else {
-          // Fall back to first category of same type
-          const defaultCat = categories.find((c) => c.kind === parsed.type);
-          setSelectedCategoryId(defaultCat?.id || categories[0]?.id || '');
-        }
-      } else {
-        // Unknown category
-        const defaultCat = categories.find((c) => c.kind === parsed.type);
-        setSelectedCategoryId(defaultCat?.id || categories[0]?.id || '');
-      }
+  const currentKey = `${parsed?.amountPaise}_${parsed?.category}_${parsed?.note}`;
+
+  const computedDefaultCategoryId = React.useMemo(() => {
+    if (!parsed) return '';
+    if (parsed.category) {
+      const found = categories.find(
+        (c) => c.name.toLowerCase() === parsed.category?.toLowerCase()
+      );
+      if (found) return found.id;
     }
-    setIsPickerOpen(false);
+    const defaultCat = categories.find((c) => c.kind === parsed.type);
+    return defaultCat?.id || categories[0]?.id || '';
   }, [parsed, categories]);
+
+  const selectedCategoryId =
+    selectedCategoryTarget === currentKey && userSelectedCategoryId
+      ? userSelectedCategoryId
+      : computedDefaultCategoryId;
+
+  const setSelectedCategoryId = (id: string) => {
+    setUserSelectedCategoryId(id);
+    setSelectedCategoryTarget(currentKey);
+  };
+
+  const originalCategoryName = parsed?.category || null;
 
   if (!parsed || !parsed.amountPaise) {
     return null;
@@ -161,7 +164,7 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
             <View style={styles.heardBox}>
               <Text style={styles.heardLabel}>Heard: </Text>
               <Text style={styles.heardText} numberOfLines={2}>
-                "{rawTranscript}"
+                {`"${rawTranscript}"`}
               </Text>
             </View>
           ) : null}

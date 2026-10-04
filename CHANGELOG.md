@@ -2,6 +2,42 @@
 
 All notable changes to the Wini project will be documented in this file.
 
+## [Phase 5: Backup, Builds, Verification] - 2026-10-04
+
+### Added
+- **Backup & Restore Subsystem**:
+  - `src/backup/validation.ts`: Schema validator ensuring imported JSON matches `app: 'wini'`, `schemaVersion: 1`, validating all transaction/category/keyword fields, integer paise amounts, and ISO dates.
+  - `src/backup/backupService.ts`: Exports `wini-backup-YYYY-MM-DD.json` using `expo-file-system/legacy` and `expo-sharing`; imports via `expo-document-picker`; restores data with `'merge'` or `'replace'`.
+  - `src/ui/BackupModal.tsx`: Visual preview modal displaying transaction/category/keyword counts, formatted export date, and options for Merge or Replace.
+  - Automated round-trip backup test suite (`src/backup/__tests__/backup.test.ts`) covering export, schema rejection, data corruption detection, complete wipe and replace, and timestamp-based merge.
+- **Settings Screen Integration**:
+  - Live Export and Import actions with haptic confirmations and error banners.
+  - `last_backup_at` display formatted in Indian locale.
+  - Prominent reminder banner triggering after 14 days without an export.
+- **EAS Build & Release Setup**:
+  - `eas.json` configured with `development` (internal distribution, dev client, APK) and `preview` (standalone internal APK).
+  - `RELEASE_CHECKLIST.md`: Step-by-step instructions for `eas login`, build commands for development and preview APKs, installation, and physical handset test checklist.
+  - Updated `README.md` with complete architecture guide, feature documentation, local running instructions, testing procedures, and EAS build workflow.
+- **Code Quality & Tooling**:
+  - Configured ESLint 9 flat config (`eslint.config.js`) supporting React 19 / React Compiler rules and strict TypeScript.
+  - 130 / 130 automated tests passing across 5 suites.
+  - 0 TypeScript compiler errors under strict mode (`npx tsc --noEmit`).
+  - 0 ESLint errors and warnings across the entire codebase.
+
+### Changed
+- `package.json`: Added `expo-file-system`, `expo-document-picker`, `expo-sharing` dependencies.
+- `app/settings.tsx`: Wired live backup actions and 14-day stale backup reminder.
+
+### Verified
+- Automated test suite passed with 130 tests across 5 test suites.
+- TypeScript strict typecheck passed (`tsc --noEmit` exited with 0 errors).
+- ESLint passed with 0 errors and 0 warnings (`eslint app src`).
+
+### Known Gaps
+- Physical Android device validation required for native file picker dialogs, system share sheet, microphone input, and on-device offline speech recognition.
+
+---
+
 ## [Phase 4: Look and Feel] - 2026-10-04
 
 ### Added

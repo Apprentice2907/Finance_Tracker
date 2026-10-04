@@ -14,10 +14,21 @@ import { useAppStore } from '../src/state/useAppStore';
 import { TrashIcon, ExportIcon, ImportIcon } from '../src/ui/icons';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { getRepository } from '../src/db';
+import {
+  exportBackupFile,
+  pickAndValidateBackupFile,
+  BackupPreview,
+} from '../src/backup/backupService';
+import { BackupModal } from '../src/ui/BackupModal';
 
 function SettingsContent() {
   const { categories, keywords, deleteKeyword, showBanner } = useAppStore();
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
+  const [isBackupStale, setIsBackupStale] = useState(false);
+  const [importPreview, setImportPreview] = useState<BackupPreview | null>(null);
+  const [backupModalVisible, setBackupModalVisible] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   useEffect(() => {
     async function fetchBackupInfo() {
@@ -25,6 +36,13 @@ function SettingsContent() {
         const repo = getRepository();
         const setting = await repo.getSetting('last_backup_at');
         setLastBackupAt(setting);
+        if (setting) {
+          const backupDate = new Date(setting);
+          const diffDays = (Date.now() - backupDate.getTime()) / (1000 * 60 * 60 * 24);
+          setIsBackupStale(diffDays > 14);
+        } else {
+          setIsBackupStale(true);
+        }
       } catch (err) {
         console.error('Failed to load backup setting:', err);
       }
@@ -32,18 +50,46 @@ function SettingsContent() {
     fetchBackupInfo();
   }, []);
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      const res = await exportBackupFile();
+      if (res.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        showBanner('Backup exported successfully.');
+        const repo = getRepository();
+        const setting = await repo.getSetting('last_backup_at');
+        setLastBackupAt(setting);
+      } else {
+        showBanner(res.error || 'Failed to export backup.');
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImport = async () => {
+    setIsImporting(true);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      const res = await pickAndValidateBackupFile();
+      if (res.canceled) return;
+      if (!res.success || !res.preview) {
+        showBanner(res.error || 'Invalid backup file.');
+        return;
+      }
+      setImportPreview(res.preview);
+      setBackupModalVisible(true);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleDeleteKeyword = async (id: string, word: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     await deleteKeyword(id);
     showBanner(`Removed "${word}" from learned keywords.`);
-  };
-
-  // Check if last backup was more than 14 days ago
-  const isBackupStale = () => {
-    if (!lastBackupAt) return true;
-    const backupDate = new Date(lastBackupAt);
-    const diffDays = (Date.now() - backupDate.getTime()) / (1000 * 60 * 60 * 24);
-    return diffDays > 14;
   };
 
   return (
@@ -64,7 +110,7 @@ function SettingsContent() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Backup & Restore</Text>
-            {isBackupStale() && (
+            {isBackupStale && (
               <View style={styles.staleBadge}>
                 <Text style={styles.staleBadgeText}>Reminder</Text>
               </View>
@@ -88,7 +134,7 @@ function SettingsContent() {
               </Text>
             </View>
 
-            {isBackupStale() && (
+            {isBackupStale && (
               <View style={styles.reminderBanner}>
                 <Text style={styles.reminderText}>
                   💡 It has been more than 14 days since your last backup. We recommend exporting your data.
@@ -99,26 +145,26 @@ function SettingsContent() {
             <View style={styles.backupActions}>
               <TouchableOpacity
                 style={[styles.backupBtn, styles.backupBtnPrimary]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-                  showBanner('Backup export configured for Phase 5 release.');
-                }}
+                onPress={handleExport}
+                disabled={isExporting}
                 activeOpacity={0.8}
               >
                 <ExportIcon size={16} color="#FFFFFF" />
-                <Text style={styles.backupBtnPrimaryText}>Export Backup</Text>
+                <Text style={styles.backupBtnPrimaryText}>
+                  {isExporting ? 'Exporting...' : 'Export Backup'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.backupBtn, styles.backupBtnSecondary]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                  showBanner('Backup import configured for Phase 5 release.');
-                }}
+                onPress={handleImport}
+                disabled={isImporting}
                 activeOpacity={0.8}
               >
                 <ImportIcon size={16} color={colors.text} />
-                <Text style={styles.backupBtnSecondaryText}>Import Backup</Text>
+                <Text style={styles.backupBtnSecondaryText}>
+                  {isImporting ? 'Reading...' : 'Import Backup'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -151,7 +197,7 @@ function SettingsContent() {
                   ]}
                 >
                   <View style={styles.keywordInfo}>
-                    <Text style={styles.keywordWord}>"{kw.word}"</Text>
+                    <Text style={styles.keywordWord}>{`"${kw.word}"`}</Text>
                     <View style={styles.categoryPill}>
                       <Text style={styles.categoryEmoji}>{kw.category_emoji || '✨'}</Text>
                       <Text style={styles.categoryName}>{kw.category_name || 'General'}</Text>
@@ -227,6 +273,18 @@ function SettingsContent() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Backup Preview & Restore Modal */}
+      <BackupModal
+        visible={backupModalVisible}
+        preview={importPreview}
+        onClose={() => setBackupModalVisible(false)}
+        onSuccess={(msg) => {
+          showBanner(msg);
+          const repo = getRepository();
+          repo.getSetting('last_backup_at').then(setLastBackupAt);
+        }}
+      />
     </SafeAreaView>
   );
 }
