@@ -26,7 +26,7 @@ import {
 import { colors, radii, spacing } from './tokens';
 import { MicIcon } from './icons';
 import { SpeechService, SpeechState } from '../speech/SpeechService';
-import { ExpoSpeechService } from '../speech/ExpoSpeechService';
+import { ExpoSpeechService, createSpeechService, WhisperModelId } from '../speech';
 import { useAppStore } from '../state/useAppStore';
 
 interface VoiceSheetProps {
@@ -48,7 +48,7 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
   onTranscriptReady,
   speechService,
 }) => {
-  const { preferOnDevice, keywords } = useAppStore();
+  const { preferOnDevice, keywords, voiceEngine, whisperModel, categories, showBanner } = useAppStore();
   const [speechState, setSpeechState] = useState<SpeechState>('idle');
   const [partialTranscript, setPartialTranscript] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -56,17 +56,44 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
   const [typedText, setTypedText] = useState('');
 
   const learnedWords = useMemo(() => keywords.map((k) => k.word), [keywords]);
-  const service = useMemo(
-    () => speechService || new ExpoSpeechService({ preferOnDevice, contextualStrings: learnedWords }),
-    [speechService, preferOnDevice, learnedWords]
+  const [activeService, setActiveService] = useState<SpeechService>(
+    () => speechService || new ExpoSpeechService({ preferOnDevice, contextualStrings: learnedWords })
   );
+  const effectiveService = speechService || activeService;
+
+  useEffect(() => {
+    if (speechService) {
+      return;
+    }
+
+    let isCancelled = false;
+    createSpeechService({
+      engine: voiceEngine,
+      whisperModelId: whisperModel as WhisperModelId,
+      preferOnDevice,
+      contextualStrings: learnedWords,
+      categories: categories.map((c) => c.name),
+      onFallback: (reason) => {
+        showBanner(reason, 4000);
+      },
+    }).then(({ service }) => {
+      if (!isCancelled) {
+        setActiveService(service);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [speechService, voiceEngine, whisperModel, preferOnDevice, learnedWords, categories, showBanner]);
+
   const pulseAnim = useMemo(() => new Animated.Value(1), []);
 
   useEffect(() => {
     let isCancelled = false;
     const startTime = Date.now();
     if (!isTypingMode) {
-      service
+      effectiveService
         .startListening({
           onStateChange: (state) => {
             if (!isCancelled) setSpeechState(state);
@@ -81,7 +108,7 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
               onTranscriptReady(text, 'voice', {
                 alternatives: details?.alternatives || [text],
                 latencyMs,
-                engine: details?.engine || service.engineName || 'expo',
+                engine: details?.engine || effectiveService.engineName || 'expo',
               });
             }
           },
@@ -102,9 +129,9 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
 
     return () => {
       isCancelled = true;
-      service.abort().catch(() => {});
+      effectiveService.abort().catch(() => {});
     };
-  }, [isTypingMode, service, onTranscriptReady]);
+  }, [isTypingMode, effectiveService, onTranscriptReady]);
 
   // Pulse animation while listening
   useEffect(() => {
@@ -136,17 +163,23 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
 
   const handleMicPress = () => {
     if (speechState === 'listening') {
-      service.stopListening().catch(() => {});
+      effectiveService.stopListening().catch(() => {});
     } else {
       setErrorMessage(null);
       setPartialTranscript('');
-      service
+      const startTime = Date.now();
+      effectiveService
         .startListening({
           onStateChange: (state) => setSpeechState(state),
           onPartialTranscript: (text) => setPartialTranscript(text),
-          onFinalTranscript: (text) => {
+          onFinalTranscript: (text, details) => {
             setSpeechState('idle');
-            onTranscriptReady(text, 'voice');
+            const latencyMs = details?.latencyMs ?? (Date.now() - startTime);
+            onTranscriptReady(text, 'voice', {
+              alternatives: details?.alternatives || [text],
+              latencyMs,
+              engine: details?.engine || effectiveService.engineName || 'expo',
+            });
           },
           onError: (friendlyMsg) => {
             setErrorMessage(friendlyMsg);
@@ -199,7 +232,7 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
                 {speechState === 'listening'
                   ? 'Listening... say "add 10 rupees rickshaw"'
                   : speechState === 'processing'
-                  ? 'Processing what you said...'
+                  ? 'Understanding...'
                   : 'Tap the mic to start speaking'}
               </Text>
 
@@ -233,6 +266,8 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
                     ? `"${partialTranscript}"`
                     : speechState === 'listening'
                     ? 'Speak naturally in English or Hinglish...'
+                    : speechState === 'processing'
+                    ? 'Understanding...'
                     : ''}
                 </Text>
               </View>
@@ -248,7 +283,7 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
               <TouchableOpacity
                 style={styles.typeInsteadBtn}
                 onPress={() => {
-                  service.abort().catch(() => {});
+                  activeService.abort().catch(() => {});
                   setIsTypingMode(true);
                 }}
               >

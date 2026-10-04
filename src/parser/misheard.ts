@@ -13,6 +13,7 @@
 
 import { DEFAULT_BUILTIN_KEYWORDS } from './categories';
 import { isNumberWord } from './numberWords';
+import { transliterateDevanagari } from './devanagari';
 
 // Currency terms recognized by the parser
 export const CURRENCY_WORDS = new Set([
@@ -477,7 +478,8 @@ export function normalizeMishearings(
 ): string {
   if (!text || typeof text !== 'string') return '';
 
-  let normalized = text;
+  // Transliterate Devanagari script (e.g. चाय -> chai, बीस -> 20, रुपये -> rupees)
+  let normalized = transliterateDevanagari(text);
 
   // 1. Multi-word alias replacements
   for (const [pattern, replacement] of MULTI_WORD_ALIASES) {

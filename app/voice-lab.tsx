@@ -8,7 +8,7 @@
  * parameters, and saving ground-truth evaluation pairs to the local `voice_log` database.
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -26,8 +26,8 @@ import * as Clipboard from 'expo-clipboard';
 import { colors, radii, spacing, typography } from '../src/ui/tokens';
 import { useAppStore } from '../src/state/useAppStore';
 import { parseUtterance, ParseResult } from '../src/parser';
-import { ExpoSpeechService } from '../src/speech/ExpoSpeechService';
 import { SpeechService, SpeechState } from '../src/speech/SpeechService';
+import { createSpeechService, defaultModelManager, WhisperModelId } from '../src/speech';
 import { VoiceLogEntry } from '../src/domain/types';
 import { formatRupees } from '../src/domain/money';
 import { MicIcon, TrashIcon } from '../src/ui/icons';
@@ -41,6 +41,9 @@ function VoiceLabContent() {
     getVoiceLogs,
     clearVoiceLogs,
     voiceEngine,
+    whisperModel,
+    preferOnDevice,
+    categories,
     showBanner,
   } = useAppStore();
 
@@ -53,9 +56,18 @@ function VoiceLabContent() {
   const [logs, setLogs] = useState<VoiceLogEntry[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
+  const [selectedLabEngine, setSelectedLabEngine] = useState<'expo' | 'whisper'>(
+    voiceEngine === 'whisper' ? 'whisper' : 'expo'
+  );
+  const [activeEngineUsed, setActiveEngineUsed] = useState<string>('expo');
+  const [isWhisperModelReady, setIsWhisperModelReady] = useState(false);
+  const activeServiceRef = React.useRef<SpeechService | null>(null);
 
-  // Active speech service instance
-  const speechService: SpeechService = useMemo(() => new ExpoSpeechService(), []);
+  useEffect(() => {
+    defaultModelManager
+      .isModelDownloaded((whisperModel as WhisperModelId) || 'base')
+      .then(setIsWhisperModelReady);
+  }, [whisperModel]);
 
   const loadLogs = useCallback(async () => {
     try {
@@ -85,8 +97,10 @@ function VoiceLabContent() {
   }, [getVoiceLogs]);
 
   const handleStartRecording = async () => {
-    if (speechState === 'listening') {
-      await speechService.stopListening();
+    if (speechState === 'listening' || speechState === 'processing') {
+      if (activeServiceRef.current) {
+        await activeServiceRef.current.stopListening();
+      }
       return;
     }
 
@@ -99,9 +113,21 @@ function VoiceLabContent() {
       setExpectedText('');
       setLastSavedId(null);
 
+      const { service, selectedEngine } = await createSpeechService({
+        engine: selectedLabEngine,
+        whisperModelId: (whisperModel as WhisperModelId) || 'base',
+        preferOnDevice,
+        contextualStrings: Object.keys(keywordMap),
+        categories: categories.map((c) => c.name),
+        onFallback: (reason) => showBanner(reason, 4000),
+      });
+
+      activeServiceRef.current = service;
+      setActiveEngineUsed(selectedEngine);
+
       const startTime = Date.now();
 
-      await speechService.startListening({
+      await service.startListening({
         onStateChange: (state) => setSpeechState(state),
         onPartialTranscript: (text) => setCurrentTranscript(text),
         onFinalTranscript: (text, details) => {
@@ -139,7 +165,7 @@ function VoiceLabContent() {
       const parseToStore = parsed || parseUtterance(currentTranscript, new Date(), 'Asia/Kolkata', keywordMap);
 
       const entry = await addVoiceLog({
-        engine: voiceEngine || 'expo',
+        engine: activeEngineUsed || selectedLabEngine,
         raw_transcript: currentTranscript.trim(),
         alternatives_json: JSON.stringify(alternatives.length ? alternatives : [currentTranscript.trim()]),
         parsed_json: JSON.stringify(parseToStore),
@@ -215,13 +241,48 @@ function VoiceLabContent() {
           </Text>
         </View>
 
-        {/* Engine Banner */}
-        <View style={styles.engineBadgeWrap}>
-          <Text style={styles.engineLabel}>ACTIVE ENGINE</Text>
-          <View style={styles.engineBadge}>
-            <Text style={styles.engineBadgeText}>
-              {voiceEngine === 'whisper' ? 'Whisper (On-Device Local)' : 'Phone Recognizer (Android / System)'}
-            </Text>
+        {/* Engine Selector */}
+        <View style={styles.engineSelectCard}>
+          <View style={styles.engineHeaderRow}>
+            <Text style={styles.engineSelectTitle}>TEST ENGINE</Text>
+            {selectedLabEngine === 'whisper' && !isWhisperModelReady && (
+              <Text style={styles.engineWarningText}>⚠️ Model missing (will fallback)</Text>
+            )}
+          </View>
+          <View style={styles.engineButtonsRow}>
+            <TouchableOpacity
+              style={[
+                styles.engineChoiceBtn,
+                selectedLabEngine === 'expo' && styles.engineChoiceBtnActive,
+              ]}
+              onPress={() => setSelectedLabEngine('expo')}
+            >
+              <Text
+                style={[
+                  styles.engineChoiceText,
+                  selectedLabEngine === 'expo' && styles.engineChoiceTextActive,
+                ]}
+              >
+                Phone Recognizer
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.engineChoiceBtn,
+                selectedLabEngine === 'whisper' && styles.engineChoiceBtnActive,
+              ]}
+              onPress={() => setSelectedLabEngine('whisper')}
+            >
+              <Text
+                style={[
+                  styles.engineChoiceText,
+                  selectedLabEngine === 'whisper' && styles.engineChoiceTextActive,
+                ]}
+              >
+                Whisper (Local)
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -475,10 +536,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 18,
   },
-  engineBadgeWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  engineSelectCard: {
     backgroundColor: colors.surface,
     padding: spacing.md,
     borderRadius: radii.md,
@@ -486,24 +544,49 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: spacing.lg,
   },
-  engineLabel: {
+  engineHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  engineSelectTitle: {
     color: colors.muted,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  engineBadge: {
-    backgroundColor: `${colors.primary}22`,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: `${colors.primary}55`,
-  },
-  engineBadgeText: {
-    color: colors.primary,
-    fontSize: 12,
+  engineWarningText: {
+    color: colors.warning,
+    fontSize: 11,
     fontWeight: '600',
+  },
+  engineButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  engineChoiceBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+    backgroundColor: colors.elevated,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  engineChoiceBtnActive: {
+    backgroundColor: `${colors.primary}22`,
+    borderColor: colors.primary,
+  },
+  engineChoiceText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  engineChoiceTextActive: {
+    color: colors.primary,
+    fontWeight: '700',
   },
   testCard: {
     backgroundColor: colors.surface,

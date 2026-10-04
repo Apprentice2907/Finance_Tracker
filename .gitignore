@@ -28,6 +28,12 @@ ios/
 *.sqlite
 *.sqlite3
 
+# AI Models & Audio (never commit models or audio recordings)
+*.bin
+*.gguf
+*.wav
+*.m4a
+
 # Environment variables
 .env*
 !.env.example

@@ -7,7 +7,7 @@
  * their data without requiring cloud accounts.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ import {
   BackupPreview,
 } from '../src/backup/backupService';
 import { BackupModal } from '../src/ui/BackupModal';
+import { defaultModelManager, WhisperModelId } from '../src/speech';
 
 function SettingsContent() {
   const router = useRouter();
@@ -43,8 +44,13 @@ function SettingsContent() {
     keepVoiceLog,
     preferOnDevice,
     voiceEngine,
+    whisperModel,
+    whisperLanguage,
     toggleKeepVoiceLog,
     togglePreferOnDevice,
+    setVoiceEngine,
+    setWhisperModel,
+    setWhisperLanguage,
     clearVoiceLogs,
   } = useAppStore();
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
@@ -55,6 +61,42 @@ function SettingsContent() {
   const [isImporting, setIsImporting] = useState(false);
   const [voiceLogCount, setVoiceLogCount] = useState<number>(0);
   const [suggestedKeywords, setSuggestedKeywords] = useState<{ word: string; categoryId: string; count: number }[]>([]);
+  const [modelDownloaded, setModelDownloaded] = useState<Record<string, boolean>>({});
+  const [downloadingModelId, setDownloadingModelId] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+
+  const refreshModelStatuses = useCallback(async () => {
+    try {
+      const statuses: Record<string, boolean> = {};
+      for (const id of ['tiny', 'base', 'small'] as WhisperModelId[]) {
+        statuses[id] = await defaultModelManager.isModelDownloaded(id);
+      }
+      setModelDownloaded(statuses);
+    } catch {
+      // Ignore in mock/web
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const statuses: Record<string, boolean> = {};
+        for (const id of ['tiny', 'base', 'small'] as WhisperModelId[]) {
+          statuses[id] = await defaultModelManager.isModelDownloaded(id);
+        }
+        if (isMounted) {
+          setModelDownloaded(statuses);
+        }
+      } catch {
+        // Ignore in mock/web
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     async function fetchBackupInfo() {
@@ -104,6 +146,63 @@ function SettingsContent() {
     setVoiceLogCount(0);
     setSuggestedKeywords([]);
     showBanner('Voice log cleared.');
+  };
+
+  const handleSelectEngine = async (eng: 'expo' | 'whisper') => {
+    Haptics.selectionAsync().catch(() => {});
+    await setVoiceEngine(eng);
+    if (eng === 'whisper') {
+      const isDownloaded = await defaultModelManager.isModelDownloaded((whisperModel as WhisperModelId) || 'base');
+      if (!isDownloaded) {
+        showBanner(`Switched to Whisper. Model (${whisperModel}) needs to be downloaded before offline use.`);
+      } else {
+        showBanner('Switched to On-device Whisper engine.');
+      }
+    } else {
+      showBanner('Switched to Phone Recognizer engine.');
+    }
+  };
+
+  const handleSelectModel = async (modelId: WhisperModelId) => {
+    Haptics.selectionAsync().catch(() => {});
+    await setWhisperModel(modelId);
+    showBanner(`Selected Whisper ${modelId} model.`);
+  };
+
+  const handleDownloadModel = async (modelId: WhisperModelId) => {
+    const model = defaultModelManager.getModelInfo(modelId);
+    try {
+      setDownloadingModelId(modelId);
+      setDownloadProgress(0);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      showBanner(`Starting download of ${model.name}...`);
+
+      await defaultModelManager.downloadModel(modelId, (percent) => {
+        setDownloadProgress(percent);
+      });
+
+      await refreshModelStatuses();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      showBanner(`${model.name} downloaded successfully! Now ready for offline voice entries.`);
+    } catch (err: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      showBanner(`Download failed: ${err.message || 'Unknown error'}`);
+    } finally {
+      setDownloadingModelId(null);
+      setDownloadProgress(0);
+    }
+  };
+
+  const handleDeleteModel = async (modelId: WhisperModelId) => {
+    const model = defaultModelManager.getModelInfo(modelId);
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      await defaultModelManager.deleteModel(modelId);
+      await refreshModelStatuses();
+      showBanner(`Deleted ${model.name} from storage.`);
+    } catch (err: any) {
+      showBanner(`Failed to delete model: ${err.message}`);
+    }
   };
 
   const handleLearnSuggested = async (word: string, categoryId: string) => {
@@ -200,21 +299,172 @@ function SettingsContent() {
             <Text style={styles.voiceLabArrow}>→</Text>
           </TouchableOpacity>
 
-          <View style={styles.card}>
-            {/* Active Voice Engine Row */}
-            <View style={styles.toggleRow}>
-              <View style={styles.toggleTextWrap}>
-                <Text style={styles.toggleTitle}>Recognition Engine</Text>
-                <Text style={styles.toggleSubtitle}>
-                  {voiceEngine === 'whisper' ? 'Whisper (On-device neural model)' : 'Phone Recognizer (Android / System STT)'}
+          {/* Engine Selector Tabs */}
+          <View style={styles.engineTabsContainer}>
+            <TouchableOpacity
+              style={[styles.engineTab, voiceEngine !== 'whisper' && styles.engineTabActive]}
+              onPress={() => handleSelectEngine('expo')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.engineTabText, voiceEngine !== 'whisper' && styles.engineTabTextActive]}>
+                Phone Recognizer
+              </Text>
+              <Text style={styles.engineTabSub}>Built-in fast STT</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.engineTab, voiceEngine === 'whisper' && styles.engineTabActive]}
+              onPress={() => handleSelectEngine('whisper')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.engineTabText, voiceEngine === 'whisper' && styles.engineTabTextActive]}>
+                On-Device Whisper
+              </Text>
+              <Text style={styles.engineTabSub}>100% offline & private</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* If Whisper selected: Show model manager */}
+          {voiceEngine === 'whisper' && (
+            <View style={styles.whisperModelSection}>
+              <View style={styles.whisperHeaderRow}>
+                <Text style={styles.whisperSectionTitle}>Quantized Whisper Models</Text>
+                <Text style={styles.whisperSectionDesc}>
+                  Download once from the internet; all speech recognition runs 100% offline on your phone with zero data sent anywhere.
                 </Text>
               </View>
-              <View style={styles.engineBadgeSmall}>
-                <Text style={styles.engineBadgeSmallText}>
-                  {voiceEngine === 'whisper' ? 'Whisper' : 'System'}
-                </Text>
+
+              {(['tiny', 'base', 'small'] as WhisperModelId[]).map((id) => {
+                const info = defaultModelManager.getModelInfo(id);
+                const isDownloaded = !!modelDownloaded[id];
+                const isSelected = whisperModel === id;
+                const isDownloading = downloadingModelId === id;
+                const sizeMB = (info.byteSize / (1024 * 1024)).toFixed(1);
+
+                return (
+                  <View
+                    key={id}
+                    style={[
+                      styles.modelCard,
+                      isSelected && styles.modelCardSelected,
+                    ]}
+                  >
+                    <View style={styles.modelHeaderRow}>
+                      <TouchableOpacity
+                        style={styles.modelSelectArea}
+                        onPress={() => isDownloaded && handleSelectModel(id)}
+                        disabled={!isDownloaded}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
+                          {isSelected && <View style={styles.radioInner} />}
+                        </View>
+                        <View style={styles.modelNameWrap}>
+                          <View style={styles.modelTitleRow}>
+                            <Text style={styles.modelName}>{info.name}</Text>
+                            {info.isDefault && <Text style={styles.badgeDefault}>Default</Text>}
+                            {info.isRecommended && <Text style={styles.badgeRec}>Recommended</Text>}
+                          </View>
+                          <Text style={styles.modelDesc}>{info.description}</Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <View style={styles.modelActionArea}>
+                        {isDownloading ? (
+                          <View style={styles.downloadingPill}>
+                            <Text style={styles.downloadingText}>{downloadProgress}%</Text>
+                          </View>
+                        ) : isDownloaded ? (
+                          <TouchableOpacity
+                            style={styles.deleteModelBtn}
+                            onPress={() => handleDeleteModel(id)}
+                            activeOpacity={0.7}
+                            hitSlop={8}
+                          >
+                            <TrashIcon size={14} color={colors.expense} />
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            style={styles.downloadModelBtn}
+                            onPress={() => handleDownloadModel(id)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.downloadModelBtnText}>Download ({sizeMB} MB)</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+
+                    {isDownloading && (
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressBarFill, { width: `${downloadProgress}%` }]} />
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+
+              {/* Whisper Language Selector */}
+              <View style={styles.langModeWrap}>
+                <View style={styles.langModeTextWrap}>
+                  <Text style={styles.langModeTitle}>Whisper Language Mode</Text>
+                  <Text style={styles.langModeSubtitle}>
+                    {whisperLanguage === 'auto'
+                      ? 'Auto-detect spoken language (supports Hindi & English).'
+                      : 'English / Romanized (recommended for Hinglish expenses like "chai 20 rupees").'}
+                  </Text>
+                </View>
+                <View style={styles.langButtonsRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.langBtn,
+                      whisperLanguage === 'en' && styles.langBtnActive,
+                    ]}
+                    onPress={() => setWhisperLanguage('en')}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.langBtnText,
+                        whisperLanguage === 'en' && styles.langBtnTextActive,
+                      ]}
+                    >
+                      English (en)
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.langBtn,
+                      whisperLanguage === 'auto' && styles.langBtnActive,
+                    ]}
+                    onPress={() => setWhisperLanguage('auto')}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.langBtnText,
+                        whisperLanguage === 'auto' && styles.langBtnTextActive,
+                      ]}
+                    >
+                      Auto-detect
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
+          )}
+
+          {/* Test Voice Quick Button */}
+          <TouchableOpacity
+            style={styles.testVoiceBtn}
+            onPress={() => router.push('/voice-lab')}
+            activeOpacity={0.8}
+          >
+            <MicIcon size={16} color="#FFFFFF" />
+            <Text style={styles.testVoiceBtnText}>Test Voice in Voice Lab</Text>
+          </TouchableOpacity>
+
+          <View style={styles.card}>
 
             {/* Switch: Keep voice log */}
             <View style={[styles.toggleRow, styles.rowDivider]}>
@@ -884,6 +1134,238 @@ const styles = StyleSheet.create({
   suggestionPlus: {
     color: colors.primary,
     fontSize: 11,
+    fontWeight: '700',
+  },
+  engineTabsContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  engineTab: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  engineTabActive: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}12`,
+  },
+  engineTabText: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  engineTabTextActive: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  engineTabSub: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  whisperModelSection: {
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  whisperHeaderRow: {
+    marginBottom: 4,
+  },
+  whisperSectionTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  whisperSectionDesc: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  modelCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  modelCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}08`,
+  },
+  modelHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  modelSelectArea: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  radioCircleActive: {
+    borderColor: colors.primary,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  modelNameWrap: {
+    flex: 1,
+  },
+  modelTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  modelName: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  badgeDefault: {
+    backgroundColor: `${colors.primary}22`,
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radii.round,
+  },
+  badgeRec: {
+    backgroundColor: `${colors.income}22`,
+    color: colors.income,
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radii.round,
+  },
+  modelDesc: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  modelActionArea: {
+    marginLeft: spacing.sm,
+  },
+  downloadingPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radii.sm,
+    backgroundColor: `${colors.primary}18`,
+  },
+  downloadingText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  downloadModelBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radii.sm,
+  },
+  downloadModelBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  deleteModelBtn: {
+    padding: 6,
+    borderRadius: radii.sm,
+    backgroundColor: `${colors.expense}14`,
+  },
+  progressBarBg: {
+    height: 4,
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    marginTop: spacing.sm,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+  },
+  testVoiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+  testVoiceBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  langModeWrap: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  langModeTextWrap: {
+    marginBottom: spacing.sm,
+  },
+  langModeTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  langModeSubtitle: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  langButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  langBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: radii.sm,
+    backgroundColor: colors.elevated,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  langBtnActive: {
+    backgroundColor: `${colors.primary}22`,
+    borderColor: colors.primary,
+  },
+  langBtnText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  langBtnTextActive: {
+    color: colors.primary,
     fontWeight: '700',
   },
 });

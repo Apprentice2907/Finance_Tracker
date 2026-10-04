@@ -11,13 +11,30 @@
  * still succeeds instead of throwing an unhelpful error.
  */
 
-import {
-  ExpoSpeechRecognitionModule,
+import type {
   ExpoSpeechRecognitionErrorEvent,
   ExpoSpeechRecognitionResultEvent,
 } from 'expo-speech-recognition';
 import { SpeechService, SpeechServiceCallbacks, SpeechState } from './SpeechService';
 import { DEFAULT_BUILTIN_KEYWORDS } from '../parser/categories';
+
+// Safe lazy import so Jest / node test runners don't fail on native ESM packages
+let ExpoSpeechRecognitionModule: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  ExpoSpeechRecognitionModule = require('expo-speech-recognition').ExpoSpeechRecognitionModule;
+} catch {
+  ExpoSpeechRecognitionModule = {
+    isRecognitionAvailable: () => false,
+    getStateAsync: async () => 'inactive',
+    requestPermissionsAsync: async () => ({ granted: false, canAskAgain: true, status: 'denied' }),
+    getPermissionsAsync: async () => ({ granted: false, canAskAgain: true, status: 'denied' }),
+    start: () => {},
+    stop: () => {},
+    abort: () => {},
+    addListener: () => ({ remove: () => {} }),
+  };
+}
 
 const DEFAULT_CONTEXTUAL_STRINGS = [
   ...Object.keys(DEFAULT_BUILTIN_KEYWORDS),

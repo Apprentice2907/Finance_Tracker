@@ -54,12 +54,16 @@ interface AppState {
   keepVoiceLog: boolean;
   preferOnDevice: boolean;
   voiceEngine: string;
+  whisperModel: string;
+  whisperLanguage: string;
 
   init: () => Promise<void>;
   refresh: () => Promise<void>;
   toggleKeepVoiceLog: (val: boolean) => Promise<void>;
   togglePreferOnDevice: (val: boolean) => Promise<void>;
   setVoiceEngine: (engine: string) => Promise<void>;
+  setWhisperModel: (model: string) => Promise<void>;
+  setWhisperLanguage: (lang: string) => Promise<void>;
   addVoiceLog: (input: CreateVoiceLogInput) => Promise<VoiceLogEntry | null>;
   updateVoiceLogSaved: (id: string, finalSavedJson: string, corrected: boolean) => Promise<void>;
   clearVoiceLogs: () => Promise<void>;
@@ -127,6 +131,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   keepVoiceLog: true,
   preferOnDevice: true,
   voiceEngine: 'expo',
+  whisperModel: 'base',
+  whisperLanguage: 'en',
 
   init: async () => {
     try {
@@ -186,6 +192,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         keepVoiceLogSetting,
         preferOnDeviceSetting,
         voiceEngineSetting,
+        whisperModelSetting,
+        whisperLanguageSetting,
       ] = await Promise.all([
         repo.getTotalsByPeriod(startOfMonth, endOfMonth),
         repo.getTotalsByPeriod(today, today),
@@ -193,11 +201,15 @@ export const useAppStore = create<AppState>((set, get) => ({
         repo.getSetting('keep_voice_log'),
         repo.getSetting('prefer_on_device'),
         repo.getSetting('voice_engine'),
+        repo.getSetting('whisper_model'),
+        repo.getSetting('whisper_language'),
       ]);
 
       const keepVoiceLog = keepVoiceLogSetting !== '0';
       const preferOnDevice = preferOnDeviceSetting !== '0';
       const voiceEngine = voiceEngineSetting || 'expo';
+      const whisperModel = whisperModelSetting || 'base';
+      const whisperLanguage = whisperLanguageSetting || 'en';
 
       let changeVsLastMonthPercent: number | null = null;
       if (previousMonthTotals.totalExpensePaise > 0) {
@@ -219,6 +231,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         keepVoiceLog,
         preferOnDevice,
         voiceEngine,
+        whisperModel,
+        whisperLanguage,
         error: null,
       });
     } catch (err: any) {
@@ -411,6 +425,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     const repo = getRepository();
     await repo.setSetting('voice_engine', engine);
     set({ voiceEngine: engine });
+  },
+
+  setWhisperModel: async (model: string) => {
+    const repo = getRepository();
+    await repo.setSetting('whisper_model', model);
+    set({ whisperModel: model });
+  },
+
+  setWhisperLanguage: async (lang: string) => {
+    const repo = getRepository();
+    await repo.setSetting('whisper_language', lang);
+    set({ whisperLanguage: lang });
   },
 
   addVoiceLog: async (input: CreateVoiceLogInput) => {
