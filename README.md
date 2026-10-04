@@ -11,6 +11,11 @@ It's also my **first ever Android app**, so this repo doubles as a learning jour
 ## ✨ What Wini can do (v1)
 
 - 🎙️ **Talk to add**: tap the mic, say "add rickshaw 10 rupees" or "kal 100 petrol"
+- 🤖 **Two Voice Engines**:
+  - **Phone Recognizer**: instant, lightweight, uses Android's native speech system with contextual hints
+  - **On-Device Whisper**: 100% private, runs OpenAI Whisper locally offline using quantized models (`tiny`, `base`, `small`)
+- 🔬 **Voice Lab**: developer workbench under Settings to benchmark recognition latency, inspect alternatives & confidence, and log ground truth pairs
+- 🩹 **Smart Mishearing Recovery**: handles phonetic spelling ("chay", "ricksha"), number homophones ("for chai" -> 4 chai), and conservative fuzzy matching
 - ⌨️ **Type to add**: same brain, no microphone needed
 - ✋ **Manual add / edit / delete**, with **Undo** after deleting
 - 🧠 **Learns your words**: pick a category once for a new word and Wini remembers it
@@ -33,6 +38,7 @@ It's also my **first ever Android app**, so this repo doubles as a learning jour
 | got 5000 salary | ₹5,000 · Income · today |
 | 2k shoes | ₹2,000 · Shopping · today |
 | 2 chai 20 rupees | ₹20 · Food (the "2" is a quantity, not the price!) |
+| fifty rupees metor | ₹50 · Transport · today (fuzzy recovers "metro"!) |
 
 If Wini isn't sure, it doesn't guess in silence. It opens a pre-filled form so you can fix it in one tap. 🙌
 
@@ -43,11 +49,13 @@ If Wini isn't sure, it doesn't guess in silence. It opens a pre-filled form so y
 ```
  🎙️ you speak
      ↓
- 📝 speech → text      (phone's speech recognizer)
+ 📝 Speech Engine      (Phone recognizer OR On-device local Whisper)
      ↓
- 🧠 parseUtterance()   (a pure function: text in, {amount, category, date, note} out)
+ 🔍 Multi-Alternative  (parses top candidate transcripts, picks highest confidence)
      ↓
- ✅ confirm card       (you check it, or fix it)
+ 🧠 parseUtterance()   (pure function: mishearing normalization + {amount, category, date, note})
+     ↓
+ 🔬 Voice Log / Sheet  (logs ground truth text if edited, confirms before save)
      ↓
  💾 SQLite on the phone (money stored as whole paise, never decimals)
 ```
@@ -64,9 +72,10 @@ The parser is **plain TypeScript with no phone stuff inside**, so it can be test
 | **expo-router** | Screens and navigation | Folders become screens |
 | **expo-sqlite** | Database on the phone | Offline, fast, no server |
 | **zustand** | Small state store | Less boilerplate than the alternatives |
-| **expo-speech-recognition** | Mic → text | Uses the phone's own recognizer (tries on-device `en-IN` first) |
+| **expo-speech-recognition** | Phone Recognizer | Uses phone's built-in recognizer (biased with contextual hints) |
+| **whisper.rn + expo-av** | On-Device Whisper | 100% offline local speech recognition with quantized ggml models |
 | **react-native-svg** | Charts | Hand-drawn SVG charts, no heavy library |
-| **Jest** | Tests | Parser, database, backup, confirm flow |
+| **Jest** | Tests | 203 automated tests (parser, database, backup, voice, whisper) |
 | **EAS Build** | Builds the APK in the cloud | No Android Studio needed on my laptop |
 
 ## 📁 Folder map

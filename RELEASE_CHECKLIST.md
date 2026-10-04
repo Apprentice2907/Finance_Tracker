@@ -54,12 +54,46 @@ Run through these verification items on your physical Android handset:
 - [ ] **Edit Entry**: Tap an entry in "Recent Entries" or on "History". Change amount or note. Verify updates immediately reflect.
 - [ ] **Delete & Undo**: Swipe or tap trash on an entry. Verify haptic feedback, entry disappears, and "Entry deleted - UNDO" snackbar appears. Tap "UNDO" and confirm entry returns.
 
-### B. Voice Input Flow (Section 8)
+### B. Voice Input Flow & Accuracy Verification
 - [ ] **Permission Prompt**: On fresh install, tap big mic button. Verify Android mic permission dialog appears with explanation.
 - [ ] **Voice Expense**: Say `"add rickshaw 10 rupees"`. Verify pulsating microphone ring, live partial transcript, and transition to Confirm Sheet.
 - [ ] **Confirmation Sheet**: Verify Amount is `₹10`, Category is `Transport 🛺`, Note is `Rickshaw`, Date is `Today`. Tap "Save". Verify haptic feedback and banner `"Added ₹10 for Transport."`.
+- [ ] **Correction Logging**: On Confirm Sheet, change the category from `Food` to `Transport` or edit values before saving. Go to Settings -> Voice Lab and confirm the entry is recorded with `Corrected` badge.
 - [ ] **Hinglish Voice**: Say `"kal 100 petrol"`. Confirm date parses as yesterday and category as Transport.
+- [ ] **Mishearing Recovery**: Say `"fifty rupees metor"` or `"chay 20"`. Confirm conservative fuzzy / phonetic normalization resolves `metro` and `chai` to `Transport` and `Food`.
 - [ ] **Low Confidence Routing**: Speak an ambiguous phrase or noise (e.g. `"something weird"`). Confirm it routes pre-filled to the manual edit modal instead of breaking.
+
+### B2. Whisper Engine & Model Management Verification
+- [ ] **Engine Selection**: Go to Settings -> Voice Engine. Switch to **Whisper (Local AI)**.
+- [ ] **Fallback on Missing Model**: Without downloading a model, tap the mic on Home. Verify Wini automatically falls back to the phone recognizer and shows banner `"Whisper model ... is not downloaded yet. Falling back to phone recognizer."`.
+- [ ] **Download Whisper Base Model**: In Settings, tap **Download (56.9 MB)** on Whisper Base (q5_1).
+  - Verify download progress bar updates smoothly (0% -> 100%).
+  - Verify free storage check prevents download if disk space is below requirement + 20 MB buffer.
+  - Verify completion banner and model card shows trash icon.
+- [ ] **Whisper Offline Recognition**:
+  - Enable Airplane mode (disable Wi-Fi and Cellular).
+  - Tap mic on Home. Verify state shows "Listening", then "Understanding...", and transcribes accurately.
+  - Confirm transcription succeeds 100% offline.
+- [ ] **Whisper Language Mode**:
+  - In Settings, toggle between "English (en)" and "Auto-detect".
+  - Speak Hinglish and verify language mode behavior.
+- [ ] **Model Deletion**:
+  - In Settings, tap the trash button on the downloaded model.
+  - Verify model is removed and download button re-appears.
+
+### B3. Voice Lab Verification
+- [ ] Open **Settings -> Voice Lab** (or tap "Test Voice in Voice Lab").
+- [ ] Tap the test engine toggle (Phone Recognizer vs Whisper).
+- [ ] Tap the microphone button and speak a phrase (e.g. `"metro fifty"`).
+- [ ] Inspect the evaluation card:
+  - Verify heard transcript displays correctly.
+  - Verify latency (in milliseconds) and parser confidence percentage.
+  - Verify recognizer alternatives list (if available from recognizer).
+  - Verify parsed breakdown (Amount, Category, Note, Date).
+- [ ] In the "Expected Text (Ground Truth)" input, type the exact intended phrase.
+- [ ] Tap **Save Evaluation to Voice Log**. Verify success feedback and log entry appended.
+- [ ] Tap **Copy JSON**. Verify clipboard contains full JSON array of voice log entries.
+- [ ] Tap **Clear** and verify voice logs are deleted.
 
 ### C. Type Instead Flow
 - [ ] Tap "Type Add" from the quick action row.

@@ -2,6 +2,34 @@
 
 All notable changes to the Wini project will be documented in this file.
 
+## [Voice Accuracy Upgrade v1] - 2026-10-04
+
+### Added
+- **PART A: Measure (Voice Lab & Correction Logging)**:
+  - Database Migration v2 adding `voice_log` SQLite table: `id`, `engine`, `raw_transcript`, `alternatives_json`, `parsed_json`, `final_saved_json`, `corrected`, `latency_ms`, `created_at`.
+  - ConfirmSheet ground-truth correction logging: when users adjust parsed values before saving, the pair is logged with `corrected: true` (text only, zero audio recorded).
+  - Voice Lab screen (`app/voice-lab.tsx`) under Settings: record test phrases, inspect latency and parser confidence, compare top recognizer alternatives, type ground-truth expected text, and export records via "Copy JSON".
+  - Settings controls: "Keep voice log" toggle (default on) and "Clear voice log" action.
+- **PART B: Quick Wins on Recognizer & Parser Accuracy**:
+  - `src/speech/ExpoSpeechService.ts`: Injected contextual biasing strings (categories, Hindi/English numerals, currency terms, commands, and learned keywords), enabled up to 5 multi-alternatives, and free-form language modeling.
+  - Multi-alternative parsing (`parseBestAlternative`): parses every candidate transcript and selects the one yielding the highest parser confidence.
+  - Settings toggle: "Prefer on-device recognition" with clear privacy explanation (on-device keeps audio strictly local; online provides higher transcription accuracy for accents/noise).
+  - `src/parser/misheard.ts`: Phrase alias map, phonetic normalization (e.g. `chay` -> `chai`, `ricksha` -> `rickshaw`), conservative fuzzy matching via Damerau-Levenshtein distance (edit distance 1-2 on tokens >= 4 chars, applied only in category step 5 when no exact match exists).
+  - Homophone disambiguation rules: Number homophones ("to", "too", "for", "won", "ate") only resolve to numbers when adjacent to currency or item nouns.
+  - Hindi & Devanagari numerals transliteration (`src/parser/devanagari.ts`).
+  - Correction learning feedback: corrected words suggest category associations under Settings.
+  - Added 56 realistic mishearing tests in `src/parser/__tests__/misheard.test.ts`.
+- **PART C: On-Device Whisper Engine**:
+  - Integration with `whisper.rn` and `expo-av` with 16 kHz mono 16-bit PCM WAV recording.
+  - Implemented `WhisperSpeechService` implementing `SpeechService` interface.
+  - Initial prompt bias: custom prompt injecting vocabulary, categories, and financial command patterns.
+  - Model Manager (`src/speech/ModelManager.ts`): verified catalog of quantized ggml models (`tiny-q5_1`, `base-q5_1`, `small-q5_1`) from official whisper.cpp Hugging Face repository with sha256 checksums, resumable downloads, free space checks, and storage in app document directory.
+  - Factory & Fallback (`src/speech/SpeechServiceFactory.ts`): automatically falls back to phone recognizer if Whisper model is missing or fails to initialize, with non-blocking user explanation.
+  - Settings UI: engine toggle tabs ("Phone Recognizer" vs "Whisper"), model picker with download progress bars, deletion buttons, and language mode toggle ("English (en)" vs "Auto-detect").
+  - Test suite expansion to 203 automated tests across 7 suites (`src/speech/__tests__/whisperEngine.test.ts`).
+
+---
+
 ## [Phase 5: Backup, Builds, Verification] - 2026-10-04
 
 ### Added
