@@ -85,3 +85,62 @@ export function formatDisplayDate(dateStr: string, now: Date = new Date()): stri
   }
   return `${day} ${monthName} ${year}`;
 }
+
+/**
+ * Returns { startDate, endDate } for the previous calendar month in IST.
+ */
+export function getPreviousMonthRange(dateStr?: string): { startDate: string; endDate: string } {
+  const target = dateStr || getTodayIndia();
+  const [yearStr, monthStr] = target.split('-');
+  let year = parseInt(yearStr, 10);
+  let month = parseInt(monthStr, 10) - 1; // previous month (1-indexed - 1)
+  if (month === 0) {
+    month = 12;
+    year -= 1;
+  }
+  const paddedMonth = String(month).padStart(2, '0');
+  const startDate = `${year}-${paddedMonth}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const endDate = `${year}-${paddedMonth}-${String(lastDay).padStart(2, '0')}`;
+  return { startDate, endDate };
+}
+
+/**
+ * Returns { startDate, endDate } for the past 7 days including today in IST.
+ */
+export function getPast7DaysRange(now: Date = new Date()): { startDate: string; endDate: string } {
+  const endDate = getTodayIndia(now);
+  const startDate = getRelativeDateIndia(-6, now);
+  return { startDate, endDate };
+}
+
+/**
+ * Formats a YYYY-MM-DD string into a 3-letter weekday abbreviation (e.g. "Mon").
+ */
+export function formatDayShort(dateStr: string): string {
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return '';
+  const [year, month, day] = parts;
+  const dateObj = new Date(year, month - 1, day);
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return days[dateObj.getDay()];
+}
+
+/**
+ * Returns an array of YYYY-MM-DD date strings between startDate and endDate inclusive.
+ */
+export function getDateRangeList(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  const current = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+
+  while (current <= end) {
+    const y = current.getUTCFullYear();
+    const m = String(current.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(current.getUTCDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${d}`);
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return dates;
+}
+

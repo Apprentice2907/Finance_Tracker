@@ -17,6 +17,7 @@ import { ExpoSpeechService } from '../speech/ExpoSpeechService';
 
 interface VoiceSheetProps {
   visible: boolean;
+  initialMode?: 'voice' | 'typed';
   onClose: () => void;
   onTranscriptReady: (transcript: string, source: 'voice' | 'typed') => void;
   speechService?: SpeechService;
@@ -24,6 +25,7 @@ interface VoiceSheetProps {
 
 export const VoiceSheet: React.FC<VoiceSheetProps> = ({
   visible,
+  initialMode = 'voice',
   onClose,
   onTranscriptReady,
   speechService,
@@ -31,7 +33,7 @@ export const VoiceSheet: React.FC<VoiceSheetProps> = ({
   const [speechState, setSpeechState] = useState<SpeechState>('idle');
   const [partialTranscript, setPartialTranscript] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isTypingMode, setIsTypingMode] = useState(false);
+  const [isTypingMode, setIsTypingMode] = useState(initialMode === 'typed');
   const [typedText, setTypedText] = useState('');
 
   const serviceRef = useRef<SpeechService>(speechService || new ExpoSpeechService());
@@ -66,17 +68,22 @@ export const VoiceSheet: React.FC<VoiceSheetProps> = ({
   }, [speechState, pulseAnim]);
 
   useEffect(() => {
-    if (visible && !isTypingMode) {
+    if (visible) {
+      const typing = initialMode === 'typed';
+      setIsTypingMode(typing);
       setErrorMessage(null);
       setPartialTranscript('');
-      startVoice();
-    } else if (!visible) {
+      setTypedText('');
+      if (!typing) {
+        startVoice();
+      }
+    } else {
       serviceRef.current.abort().catch(() => {});
       setSpeechState('idle');
       setPartialTranscript('');
       setErrorMessage(null);
     }
-  }, [visible, isTypingMode]);
+  }, [visible, initialMode]);
 
   const startVoice = async () => {
     setErrorMessage(null);

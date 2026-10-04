@@ -96,3 +96,42 @@ export const EyeIcon: React.FC<IconProps & { visible?: boolean }> = ({ size = 24
     )}
   </Svg>
 );
+
+export const KeyboardIcon: React.FC<IconProps> = ({ size = 24, color = '#FFFFFF' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="2" y="4" width="20" height="16" rx="3" stroke={color} strokeWidth={2} />
+    <Path d="M6 8H6.01M10 8H10.01M14 8H14.01M18 8H18.01M6 12H6.01M10 12H10.01M14 12H14.01M18 12H18.01M8 16H16" stroke={color} strokeWidth={2} strokeLinecap="round" />
+  </Svg>
+);
+
+export const ArrowTrendUpIcon: React.FC<IconProps> = ({ size = 24, color = '#FFFFFF' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M23 6L13.5 15.5L8.5 10.5L1 18" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M17 6H23V12" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const ArrowTrendDownIcon: React.FC<IconProps> = ({ size = 24, color = '#FFFFFF' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M23 18L13.5 8.5L8.5 13.5L1 6" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M17 18H23V12" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const ExportIcon: React.FC<IconProps> = ({ size = 24, color = '#FFFFFF' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M4 12V20C4 20.5523 4.44772 21 5 21H19C19.5523 21 20 20.5523 20 20V12" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M12 3V15" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M8 7L12 3L16 7" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const ImportIcon: React.FC<IconProps> = ({ size = 24, color = '#FFFFFF' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M4 12V20C4 20.5523 4.44772 21 5 21H19C19.5523 21 20 20.5523 20 20V12" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M12 15V3" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M8 11L12 15L16 11" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+

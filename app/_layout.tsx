@@ -79,12 +79,6 @@ export default function RootLayout() {
               tabBarIcon: ({ color }) => <SettingsIcon size={22} color={color} />,
             }}
           />
-          <Tabs.Screen
-            name="explore"
-            options={{
-              href: null, // Hide explore template screen from tabs
-            }}
-          />
         </Tabs>
       </View>
     </ErrorBoundary>

@@ -9,7 +9,15 @@ import {
   KeywordMapEntry,
 } from '../domain/types';
 import { getRepository, initDatabase } from '../db';
-import { getTodayIndia, getStartOfMonth, getEndOfMonth } from '../domain/dates';
+import {
+  getTodayIndia,
+  getStartOfMonth,
+  getEndOfMonth,
+  getPreviousMonthRange,
+  getPast7DaysRange,
+  formatDayShort,
+  getDateRangeList,
+} from '../domain/dates';
 
 export interface KeywordWithCategory extends KeywordMapEntry {
   category_name?: string;
@@ -27,11 +35,14 @@ interface AppState {
   keywords: KeywordWithCategory[];
   keywordMap: Record<string, string>; // word -> category_name
   currentMonthTotals: PeriodTotals;
+  previousMonthTotals: PeriodTotals;
+  changeVsLastMonthPercent: number | null;
   todayTotals: PeriodTotals;
   lastDeletedTransaction: Transaction | null;
 
   init: () => Promise<void>;
   refresh: () => Promise<void>;
+  getInsightsData: (period: 'week' | 'month') => Promise<InsightsData>;
   addTransaction: (input: CreateTransactionInput) => Promise<Transaction>;
   updateTransaction: (id: string, updates: UpdateTransactionInput) => Promise<Transaction>;
   deleteTransaction: (id: string) => Promise<void>;
@@ -41,6 +52,31 @@ interface AppState {
   showBanner: (msg: string, durationMs?: number) => void;
   clearBanner: () => void;
   clearError: () => void;
+}
+
+export interface InsightsData {
+  period: 'week' | 'month';
+  startDate: string;
+  endDate: string;
+  totalExpensePaise: number;
+  totalIncomePaise: number;
+  dailyBars: { date: string; label: string; amountPaise: number }[];
+  categoryBreakdown: {
+    categoryId: string;
+    name: string;
+    emoji: string;
+    color: string;
+    amountPaise: number;
+    percentage: number;
+  }[];
+  avgPerDayPaise: number;
+  biggestExpense: {
+    amountPaise: number;
+    note: string;
+    categoryName: string;
+    emoji: string;
+    date: string;
+  } | null;
 }
 
 const emptyTotals: PeriodTotals = {
@@ -62,6 +98,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   keywords: [],
   keywordMap: {},
   currentMonthTotals: emptyTotals,
+  previousMonthTotals: emptyTotals,
+  changeVsLastMonthPercent: null,
   todayTotals: emptyTotals,
   lastDeletedTransaction: null,
 
@@ -114,11 +152,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       const today = getTodayIndia();
       const startOfMonth = getStartOfMonth(today);
       const endOfMonth = getEndOfMonth(today);
+      const prevMonthRange = getPreviousMonthRange(today);
 
-      const [currentMonthTotals, todayTotals] = await Promise.all([
+      const [currentMonthTotals, todayTotals, previousMonthTotals] = await Promise.all([
         repo.getTotalsByPeriod(startOfMonth, endOfMonth),
         repo.getTotalsByPeriod(today, today),
+        repo.getTotalsByPeriod(prevMonthRange.startDate, prevMonthRange.endDate),
       ]);
+
+      let changeVsLastMonthPercent: number | null = null;
+      if (previousMonthTotals.totalExpensePaise > 0) {
+        const diff = currentMonthTotals.totalExpensePaise - previousMonthTotals.totalExpensePaise;
+        changeVsLastMonthPercent = Math.round((diff / previousMonthTotals.totalExpensePaise) * 100);
+      } else if (currentMonthTotals.totalExpensePaise > 0) {
+        changeVsLastMonthPercent = 100;
+      }
 
       set({
         categories,
@@ -126,12 +174,96 @@ export const useAppStore = create<AppState>((set, get) => ({
         keywords,
         keywordMap,
         currentMonthTotals,
+        previousMonthTotals,
+        changeVsLastMonthPercent,
         todayTotals,
         error: null,
       });
     } catch (err: any) {
       set({ error: err?.message || 'Failed to load app data' });
     }
+  },
+
+  getInsightsData: async (period: 'week' | 'month'): Promise<InsightsData> => {
+    const repo = getRepository();
+    const today = getTodayIndia();
+
+    let startDate: string;
+    let endDate: string;
+
+    if (period === 'week') {
+      const range = getPast7DaysRange();
+      startDate = range.startDate;
+      endDate = range.endDate;
+    } else {
+      startDate = getStartOfMonth(today);
+      endDate = getEndOfMonth(today);
+    }
+
+    const [txs, categoryTotals, periodTotals] = await Promise.all([
+      repo.listTransactions({ startDate, endDate }),
+      repo.getTotalsByCategory(startDate, endDate, 'expense'),
+      repo.getTotalsByPeriod(startDate, endDate),
+    ]);
+
+    // Build daily bars
+    const dates = getDateRangeList(startDate, endDate);
+    const dayTotalsMap: Record<string, number> = {};
+    for (const d of dates) {
+      dayTotalsMap[d] = 0;
+    }
+
+    let biggestExpense: InsightsData['biggestExpense'] = null;
+    let maxExpensePaise = 0;
+
+    for (const tx of txs) {
+      if (tx.type === 'expense') {
+        dayTotalsMap[tx.occurred_on] = (dayTotalsMap[tx.occurred_on] || 0) + tx.amount_paise;
+        if (tx.amount_paise > maxExpensePaise) {
+          maxExpensePaise = tx.amount_paise;
+          biggestExpense = {
+            amountPaise: tx.amount_paise,
+            note: tx.note,
+            categoryName: tx.category_name || 'General',
+            emoji: tx.category_emoji || '✨',
+            date: tx.occurred_on,
+          };
+        }
+      }
+    }
+
+    const dailyBars = dates.map((d) => ({
+      date: d,
+      label: period === 'week' ? formatDayShort(d) : String(parseInt(d.split('-')[2], 10)),
+      amountPaise: dayTotalsMap[d] || 0,
+    }));
+
+    // Top categories with percentages
+    const totalExpense = periodTotals.totalExpensePaise;
+    const categoryBreakdown = categoryTotals.map((c) => ({
+      categoryId: c.category_id,
+      name: c.category_name,
+      emoji: c.category_emoji,
+      color: c.category_color,
+      amountPaise: c.total_paise,
+      percentage: totalExpense > 0 ? Math.round((c.total_paise / totalExpense) * 100) : 0,
+    }));
+
+    // Average per day
+    const dayCount = period === 'week' ? 7 : Math.max(1, parseInt(today.split('-')[2], 10));
+    const avgPerDayPaise = Math.round(totalExpense / dayCount);
+
+    return {
+      period,
+      startDate,
+      endDate,
+      totalExpensePaise: totalExpense,
+      totalIncomePaise: periodTotals.totalIncomePaise,
+      dailyBars,
+      categoryBreakdown,
+      avgPerDayPaise,
+      biggestExpense,
+    };
   },
 
   addTransaction: async (input: CreateTransactionInput) => {

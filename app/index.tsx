@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,22 +8,48 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  BackHandler,
+  Dimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { colors, radii, spacing, typography } from '../src/ui/tokens';
 import { useAppStore } from '../src/state/useAppStore';
 import { formatRupees } from '../src/domain/money';
 import { TransactionWithCategory, TransactionType } from '../src/domain/types';
-import { EyeIcon, PlusIcon, TrashIcon, MicIcon } from '../src/ui/icons';
+import {
+  EyeIcon,
+  PlusIcon,
+  TrashIcon,
+  MicIcon,
+  KeyboardIcon,
+  ArrowTrendUpIcon,
+  ArrowTrendDownIcon,
+  ChartIcon,
+} from '../src/ui/icons';
 import { TransactionModal } from '../src/ui/TransactionModal';
 import { VoiceSheet } from '../src/ui/VoiceSheet';
 import { ConfirmSheet } from '../src/ui/ConfirmSheet';
 import { parseUtterance, ParseResult } from '../src/parser';
+import { ErrorBoundary } from '../src/ui/ErrorBoundary';
+import { useRouter } from 'expo-router';
 
-export default function HomeScreen() {
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+function HomeContent() {
+  const router = useRouter();
   const {
     groupedTransactions,
     currentMonthTotals,
     todayTotals,
+    changeVsLastMonthPercent,
     categories,
     keywordMap,
     addTransaction,
@@ -40,27 +66,101 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>('expense');
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [activeCardIndex, setActiveCardIndex] = useState(0); // 0: Month Expense, 1: Today Expense, 2: Month Income
 
   // Voice & Confirm sheets
   const [voiceSheetVisible, setVoiceSheetVisible] = useState(false);
+  const [voiceSheetMode, setVoiceSheetMode] = useState<'voice' | 'typed'>('voice');
   const [confirmSheetVisible, setConfirmSheetVisible] = useState(false);
   const [parsedResult, setParsedResult] = useState<ParseResult | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [transcriptSource, setTranscriptSource] = useState<'voice' | 'typed'>('voice');
 
+  // Reanimated values for card transitions
+  const cardScale = useSharedValue(1);
+  const micPulse = useSharedValue(1);
+
+  // Pulsating animation for docked mic button
+  useEffect(() => {
+    micPulse.value = withRepeat(
+      withSequence(
+        withTiming(1.15, { duration: 1200 }),
+        withTiming(1.0, { duration: 1200 })
+      ),
+      -1,
+      true
+    );
+  }, [micPulse]);
+
+  const micRingStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: micPulse.value }],
+    opacity: 0.35 + (micPulse.value - 1) * 1.5,
+  }));
+
+  // Hardware Back Button handling on Android: close open sheets first
+  useEffect(() => {
+    const onBackPress = () => {
+      if (confirmSheetVisible) {
+        setConfirmSheetVisible(false);
+        return true;
+      }
+      if (voiceSheetVisible) {
+        setVoiceSheetVisible(false);
+        return true;
+      }
+      if (modalVisible) {
+        setModalVisible(false);
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [confirmSheetVisible, voiceSheetVisible, modalVisible]);
+
   const recentTransactions = groupedTransactions.flatMap((g) => g.transactions).slice(0, 10);
 
+  const handleCardSwitch = (index: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    cardScale.value = 0.96;
+    cardScale.value = withSpring(1, { damping: 14, stiffness: 200 });
+    setActiveCardIndex(index);
+  };
+
+  const mainCardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
+  }));
+
+  const openVoiceAdd = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setVoiceSheetMode('voice');
+    setVoiceSheetVisible(true);
+  };
+
+  const openTypeAdd = () => {
+    Haptics.selectionAsync().catch(() => {});
+    setVoiceSheetMode('typed');
+    setVoiceSheetVisible(true);
+  };
+
   const openAddModal = (type: TransactionType = 'expense') => {
+    Haptics.selectionAsync().catch(() => {});
     setEditingTransaction(null);
     setModalDefaultType(type);
     setModalVisible(true);
   };
 
   const openEditModal = (tx: TransactionWithCategory) => {
+    Haptics.selectionAsync().catch(() => {});
     setEditingTransaction(tx);
     setModalDefaultType(tx.type);
     setModalVisible(true);
+  };
+
+  const handleDeleteWithFeedback = async (id: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    await deleteTransaction(id);
   };
 
   const handleTranscriptReady = (transcript: string, source: 'voice' | 'typed') => {
@@ -70,7 +170,7 @@ export default function HomeScreen() {
 
     const parsed = parseUtterance(transcript, new Date(), 'Asia/Kolkata', keywordMap);
 
-    // If confidence is low or amount could not be parsed, open edit form pre-filled
+    // If confidence is low or amount could not be parsed, route directly to edit form pre-filled
     if (parsed.confidence < 0.6 || !parsed.amountPaise) {
       showBanner('Low confidence — please review and complete details');
       const foundCat = categories.find(
@@ -178,12 +278,16 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Wini Wallet 🛺</Text>
-            <Text style={styles.subGreeting}>Track expenses with your voice</Text>
+            <Text style={styles.subGreeting}>Voice-first personal finance</Text>
           </View>
           <TouchableOpacity
-            style={styles.avatar}
-            onPress={() => setHideBalances(!hideBalances)}
-            hitSlop={8}
+            style={styles.eyeBtn}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => {});
+              setHideBalances(!hideBalances);
+            }}
+            hitSlop={12}
+            accessibilityLabel="Toggle balance visibility"
           >
             <EyeIcon size={20} color={colors.textSecondary} visible={!hideBalances} />
           </TouchableOpacity>
@@ -191,11 +295,15 @@ export default function HomeScreen() {
 
         {/* Stacked Wallet Cards */}
         <View style={styles.walletContainer}>
-          {/* Background Peek Card 2: Income */}
+          {/* Peek Card: Income this month (Back) */}
           <TouchableOpacity
-            style={[styles.peekCard, styles.peekCardBack]}
-            onPress={() => setActiveCardIndex(2)}
-            activeOpacity={0.9}
+            style={[
+              styles.peekCard,
+              styles.peekCardBack,
+              activeCardIndex === 2 && styles.peekCardSelected,
+            ]}
+            onPress={() => handleCardSwitch(2)}
+            activeOpacity={0.88}
           >
             <Text style={styles.peekLabel}>Income this month</Text>
             <Text style={[styles.peekAmount, { color: colors.income }]}>
@@ -203,11 +311,15 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Background Peek Card 1: Today */}
+          {/* Peek Card: Spent today (Middle) */}
           <TouchableOpacity
-            style={[styles.peekCard, styles.peekCardMiddle]}
-            onPress={() => setActiveCardIndex(1)}
-            activeOpacity={0.9}
+            style={[
+              styles.peekCard,
+              styles.peekCardMiddle,
+              activeCardIndex === 1 && styles.peekCardSelected,
+            ]}
+            onPress={() => handleCardSwitch(1)}
+            activeOpacity={0.88}
           >
             <Text style={styles.peekLabel}>Spent today</Text>
             <Text style={styles.peekAmount}>
@@ -215,20 +327,62 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Foreground Main Card */}
-          <View style={styles.mainCard}>
+          {/* Foreground Active Card */}
+          <Animated.View style={[styles.mainCard, mainCardAnimatedStyle]}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardLabel}>
-                {activeCardIndex === 0
-                  ? 'This month spent'
-                  : activeCardIndex === 1
-                  ? 'Spent today'
-                  : 'Income this month'}
-              </Text>
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>
-                  {activeCardIndex === 2 ? 'Income' : 'Expense'}
+              <View style={styles.cardHeaderLeft}>
+                <Text style={styles.cardLabel}>
+                  {activeCardIndex === 0
+                    ? 'This month spent'
+                    : activeCardIndex === 1
+                    ? 'Spent today'
+                    : 'Income this month'}
                 </Text>
+              </View>
+
+              {/* Tag & Change vs last month chip */}
+              <View style={styles.chipRow}>
+                {activeCardIndex === 0 && changeVsLastMonthPercent !== null && (
+                  <View
+                    style={[
+                      styles.changeChip,
+                      changeVsLastMonthPercent > 0
+                        ? styles.changeChipUp
+                        : styles.changeChipDown,
+                    ]}
+                  >
+                    {changeVsLastMonthPercent > 0 ? (
+                      <ArrowTrendUpIcon size={12} color={colors.expense} />
+                    ) : (
+                      <ArrowTrendDownIcon size={12} color={colors.income} />
+                    )}
+                    <Text
+                      style={[
+                        styles.changeChipText,
+                        changeVsLastMonthPercent > 0
+                          ? { color: colors.expense }
+                          : { color: colors.income },
+                      ]}
+                    >
+                      {Math.abs(changeVsLastMonthPercent)}% vs last mo
+                    </Text>
+                  </View>
+                )}
+                <View
+                  style={[
+                    styles.tag,
+                    activeCardIndex === 2 ? styles.tagIncome : styles.tagExpense,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tagText,
+                      activeCardIndex === 2 ? { color: colors.income } : { color: colors.primary },
+                    ]}
+                  >
+                    {activeCardIndex === 2 ? 'Income' : 'Expense'}
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -254,56 +408,80 @@ export default function HomeScreen() {
               </Text>
 
               {activeCardIndex !== 0 && (
-                <TouchableOpacity onPress={() => setActiveCardIndex(0)}>
+                <TouchableOpacity
+                  onPress={() => handleCardSwitch(0)}
+                  hitSlop={8}
+                >
                   <Text style={styles.resetCardText}>Back to Month</Text>
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+          </Animated.View>
         </View>
 
-        {/* Quick Action Buttons */}
+        {/* Quick Actions Row (Glass style buttons) */}
         <View style={styles.quickActions}>
+          {/* Voice Add */}
           <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnPrimary]}
-            onPress={() => setVoiceSheetVisible(true)}
+            style={[styles.actionBtn, styles.actionBtnVoice]}
+            onPress={openVoiceAdd}
             activeOpacity={0.8}
           >
-            <View style={styles.btnIconWrap}>
-              <MicIcon size={16} color="#FFFFFF" />
+            <View style={styles.btnIconWrapPrimary}>
+              <MicIcon size={15} color="#FFFFFF" />
             </View>
             <Text style={styles.actionBtnText}>Voice Add</Text>
           </TouchableOpacity>
 
+          {/* Type Add */}
           <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnManual]}
-            onPress={() => openAddModal('expense')}
+            style={styles.actionBtn}
+            onPress={openTypeAdd}
             activeOpacity={0.8}
           >
-            <View style={[styles.btnIconWrap, { backgroundColor: colors.surface }]}>
-              <PlusIcon size={16} color={colors.text} />
+            <View style={styles.btnIconWrapDefault}>
+              <KeyboardIcon size={15} color={colors.text} />
             </View>
-            <Text style={styles.actionBtnText}>Manual Add</Text>
+            <Text style={styles.actionBtnText}>Type Add</Text>
           </TouchableOpacity>
 
+          {/* Add Income */}
           <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnIncome]}
+            style={styles.actionBtn}
             onPress={() => openAddModal('income')}
             activeOpacity={0.8}
           >
-            <View style={[styles.btnIconWrap, { backgroundColor: 'rgba(46, 204, 143, 0.2)' }]}>
-              <PlusIcon size={16} color={colors.income} />
+            <View style={styles.btnIconWrapIncome}>
+              <PlusIcon size={15} color={colors.income} />
             </View>
             <Text style={styles.actionBtnText}>Income</Text>
+          </TouchableOpacity>
+
+          {/* Insights shortcut */}
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => router.push('/insights')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.btnIconWrapInsights}>
+              <ChartIcon size={15} color="#9D8CFF" />
+            </View>
+            <Text style={styles.actionBtnText}>Insights</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Recent Entries Header */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Entries</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/history')}
+            hitSlop={8}
+          >
+            <Text style={styles.sectionLink}>View all</Text>
           </TouchableOpacity>
         </View>
 
         {/* Recent Transactions List */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Entries</Text>
-          <Text style={styles.sectionSub}>{recentTransactions.length} items</Text>
-        </View>
-
         {recentTransactions.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>🍃</Text>
@@ -337,6 +515,7 @@ export default function HomeScreen() {
                   <Text style={styles.txCategory}>
                     {tx.category_name || 'General'} • {tx.occurred_on}
                     {tx.source === 'voice' && ' • 🎤'}
+                    {tx.source === 'typed' && ' • ⌨️'}
                   </Text>
                 </View>
 
@@ -351,9 +530,10 @@ export default function HomeScreen() {
                     {formatRupees(tx.amount_paise)}
                   </Text>
                   <TouchableOpacity
-                    onPress={() => deleteTransaction(tx.id)}
-                    hitSlop={8}
+                    onPress={() => handleDeleteWithFeedback(tx.id)}
+                    hitSlop={12}
                     style={styles.deleteIcon}
+                    accessibilityLabel="Delete entry"
                   >
                     <TrashIcon size={16} color={colors.muted} />
                   </TouchableOpacity>
@@ -364,12 +544,14 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {/* Docked Centered Big Mic Button */}
-      <View style={styles.dockedMicContainer}>
+      {/* Docked Centered Big Mic Button with Pulsating Outer Ring */}
+      <View style={styles.dockedMicContainer} pointerEvents="box-none">
+        <Animated.View style={[styles.dockedMicGlow, micRingStyle]} />
         <TouchableOpacity
           style={styles.dockedMicButton}
-          onPress={() => setVoiceSheetVisible(true)}
+          onPress={openVoiceAdd}
           activeOpacity={0.85}
+          accessibilityLabel="Record voice expense"
         >
           <MicIcon size={30} color="#FFFFFF" />
         </TouchableOpacity>
@@ -379,7 +561,13 @@ export default function HomeScreen() {
       {lastDeletedTransaction && (
         <View style={styles.snackbar}>
           <Text style={styles.snackbarText}>Entry deleted</Text>
-          <TouchableOpacity onPress={undoDelete}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              undoDelete();
+            }}
+            hitSlop={8}
+          >
             <Text style={styles.undoText}>UNDO</Text>
           </TouchableOpacity>
         </View>
@@ -388,6 +576,7 @@ export default function HomeScreen() {
       {/* Voice & Typed Input Sheet */}
       <VoiceSheet
         visible={voiceSheetVisible}
+        initialMode={voiceSheetMode}
         onClose={() => setVoiceSheetVisible(false)}
         onTranscriptReady={handleTranscriptReady}
       />
@@ -434,6 +623,14 @@ export default function HomeScreen() {
   );
 }
 
+export default function HomeScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Home Screen unavailable">
+      <HomeContent />
+    </ErrorBoundary>
+  );
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -444,7 +641,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
-    paddingBottom: 100, // accommodate docked mic
+    paddingBottom: 110, // accommodate docked mic
   },
   banner: {
     position: 'absolute',
@@ -472,7 +669,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.xl,
-    paddingTop: Platform.OS === 'android' ? 12 : 0,
+    paddingTop: Platform.OS === 'android' ? 8 : 0,
   },
   greeting: {
     color: colors.text,
@@ -485,9 +682,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
-  avatar: {
-    width: 44,
-    height: 44,
+  eyeBtn: {
+    width: 48,
+    height: 48,
     borderRadius: radii.round,
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -497,7 +694,7 @@ const styles = StyleSheet.create({
   },
   walletContainer: {
     position: 'relative',
-    height: 200,
+    height: 204,
     marginBottom: spacing.xl,
   },
   peekCard: {
@@ -513,17 +710,20 @@ const styles = StyleSheet.create({
   },
   peekCardBack: {
     top: 0,
-    backgroundColor: '#0d162d',
-    borderColor: 'rgba(46, 204, 143, 0.2)',
+    backgroundColor: '#0E172E',
+    borderColor: 'rgba(46, 204, 143, 0.25)',
     borderWidth: 1,
-    height: 80,
+    height: 76,
   },
   peekCardMiddle: {
     top: 14,
-    backgroundColor: '#121d3a',
-    borderColor: colors.border,
+    backgroundColor: '#131F3D',
+    borderColor: 'rgba(59, 110, 245, 0.25)',
     borderWidth: 1,
-    height: 80,
+    height: 76,
+  },
+  peekCardSelected: {
+    borderColor: colors.primary,
   },
   peekLabel: {
     color: colors.muted,
@@ -541,37 +741,67 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
+    borderColor: colors.elevatedBorder,
+    borderWidth: 1.5,
     borderRadius: radii.xl,
     padding: spacing.xl,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    elevation: 10,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  cardHeaderLeft: {
+    flex: 1,
   },
   cardLabel: {
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  changeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radii.sm,
+    gap: 3,
+  },
+  changeChipUp: {
+    backgroundColor: colors.expenseMuted,
+  },
+  changeChipDown: {
+    backgroundColor: colors.incomeMuted,
+  },
+  changeChipText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   tag: {
-    backgroundColor: colors.primaryMuted,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radii.sm,
   },
+  tagExpense: {
+    backgroundColor: colors.primaryMuted,
+  },
+  tagIncome: {
+    backgroundColor: colors.incomeMuted,
+  },
   tagText: {
-    color: colors.primary,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -580,7 +810,7 @@ const styles = StyleSheet.create({
     fontSize: 38,
     fontWeight: '700',
     fontFamily: typography.displaySerif,
-    marginVertical: spacing.sm,
+    marginVertical: spacing.xs,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -595,7 +825,7 @@ const styles = StyleSheet.create({
   resetCardText: {
     color: colors.primary,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   quickActions: {
     flexDirection: 'row',
@@ -607,33 +837,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    minHeight: 48,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: 4,
     borderRadius: radii.lg,
+    backgroundColor: colors.glass,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.glassBorder,
   },
-  actionBtnPrimary: {
+  actionBtnVoice: {
     backgroundColor: colors.primaryMuted,
-    borderColor: colors.primary,
+    borderColor: 'rgba(59, 110, 245, 0.4)',
   },
-  actionBtnManual: {
-    backgroundColor: colors.surface,
-  },
-  actionBtnIncome: {
-    backgroundColor: colors.surface,
-  },
-  btnIconWrap: {
-    width: 26,
-    height: 26,
+  btnIconWrapPrimary: {
+    width: 24,
+    height: 24,
     borderRadius: radii.round,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 6,
+    marginRight: 5,
+  },
+  btnIconWrapDefault: {
+    width: 24,
+    height: 24,
+    borderRadius: radii.round,
+    backgroundColor: colors.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 5,
+  },
+  btnIconWrapIncome: {
+    width: 24,
+    height: 24,
+    borderRadius: radii.round,
+    backgroundColor: colors.incomeMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 5,
+  },
+  btnIconWrapInsights: {
+    width: 24,
+    height: 24,
+    borderRadius: radii.round,
+    backgroundColor: 'rgba(157, 140, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 5,
   },
   actionBtnText: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   sectionHeader: {
@@ -647,9 +901,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  sectionSub: {
-    color: colors.muted,
-    fontSize: 12,
+  sectionLink: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   listContainer: {
     backgroundColor: colors.surface,
@@ -661,7 +916,9 @@ const styles = StyleSheet.create({
   txRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
+    minHeight: 56,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
@@ -705,7 +962,10 @@ const styles = StyleSheet.create({
     color: colors.income,
   },
   deleteIcon: {
-    padding: 2,
+    minWidth: 32,
+    minHeight: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyContainer: {
     backgroundColor: colors.surface,
@@ -736,6 +996,16 @@ const styles = StyleSheet.create({
     bottom: 16,
     alignSelf: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    width: 80,
+    height: 80,
+  },
+  dockedMicGlow: {
+    position: 'absolute',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: colors.primary,
   },
   dockedMicButton: {
     width: 64,
@@ -746,9 +1016,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowOpacity: 0.6,
+    shadowRadius: 14,
+    elevation: 12,
     borderWidth: 3,
     borderColor: colors.surface,
   },
@@ -763,6 +1033,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    minHeight: 48,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -774,10 +1045,12 @@ const styles = StyleSheet.create({
   snackbarText: {
     color: colors.text,
     fontSize: 14,
+    fontWeight: '500',
   },
   undoText: {
     color: colors.warning,
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 14,
+    letterSpacing: 0.5,
   },
 });

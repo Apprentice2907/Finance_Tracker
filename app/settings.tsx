@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,42 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import { colors, radii, spacing } from '../src/ui/tokens';
+import * as Haptics from 'expo-haptics';
+import { colors, radii, spacing, typography } from '../src/ui/tokens';
 import { useAppStore } from '../src/state/useAppStore';
-import { TrashIcon } from '../src/ui/icons';
+import { TrashIcon, ExportIcon, ImportIcon } from '../src/ui/icons';
+import { ErrorBoundary } from '../src/ui/ErrorBoundary';
+import { getRepository } from '../src/db';
 
-export default function SettingsScreen() {
+function SettingsContent() {
   const { categories, keywords, deleteKeyword, showBanner } = useAppStore();
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchBackupInfo() {
+      try {
+        const repo = getRepository();
+        const setting = await repo.getSetting('last_backup_at');
+        setLastBackupAt(setting);
+      } catch (err) {
+        console.error('Failed to load backup setting:', err);
+      }
+    }
+    fetchBackupInfo();
+  }, []);
 
   const handleDeleteKeyword = async (id: string, word: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     await deleteKeyword(id);
     showBanner(`Removed "${word}" from learned keywords.`);
+  };
+
+  // Check if last backup was more than 14 days ago
+  const isBackupStale = () => {
+    if (!lastBackupAt) return true;
+    const backupDate = new Date(lastBackupAt);
+    const diffDays = (Date.now() - backupDate.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays > 14;
   };
 
   return (
@@ -30,8 +56,72 @@ export default function SettingsScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>Categories, learned vocabulary & preferences</Text>
+          <Text style={styles.title}>Settings ⚙️</Text>
+          <Text style={styles.subtitle}>Categories, learned vocabulary & data backup</Text>
+        </View>
+
+        {/* Section: Backup & Restore */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Backup & Restore</Text>
+            {isBackupStale() && (
+              <View style={styles.staleBadge}>
+                <Text style={styles.staleBadgeText}>Reminder</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.sectionDesc}>
+            Wini stores all data locally. Export a JSON backup to keep your transactions safe.
+          </Text>
+
+          <View style={styles.backupCard}>
+            <View style={styles.backupStatusRow}>
+              <Text style={styles.backupStatusLabel}>Last Backup</Text>
+              <Text style={styles.backupStatusValue}>
+                {lastBackupAt
+                  ? new Date(lastBackupAt).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : 'Never'}
+              </Text>
+            </View>
+
+            {isBackupStale() && (
+              <View style={styles.reminderBanner}>
+                <Text style={styles.reminderText}>
+                  💡 It has been more than 14 days since your last backup. We recommend exporting your data.
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.backupActions}>
+              <TouchableOpacity
+                style={[styles.backupBtn, styles.backupBtnPrimary]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                  showBanner('Backup export configured for Phase 5 release.');
+                }}
+                activeOpacity={0.8}
+              >
+                <ExportIcon size={16} color="#FFFFFF" />
+                <Text style={styles.backupBtnPrimaryText}>Export Backup</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.backupBtn, styles.backupBtnSecondary]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  showBanner('Backup import configured for Phase 5 release.');
+                }}
+                activeOpacity={0.8}
+              >
+                <ImportIcon size={16} color={colors.text} />
+                <Text style={styles.backupBtnSecondaryText}>Import Backup</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         {/* Section: Learned Keywords */}
@@ -41,13 +131,13 @@ export default function SettingsScreen() {
             <Text style={styles.sectionBadge}>{keywords.length}</Text>
           </View>
           <Text style={styles.sectionDesc}>
-            Wini automatically remembers words you assign to categories.
+            Wini automatically remembers vocabulary when you confirm categories.
           </Text>
 
           {keywords.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>
-                No learned keywords yet. When you confirm or edit a word's category, Wini will remember it here!
+                No learned keywords yet. When you assign an unknown word to a category, Wini will remember it here!
               </Text>
             </View>
           ) : (
@@ -69,8 +159,9 @@ export default function SettingsScreen() {
                   </View>
                   <TouchableOpacity
                     onPress={() => handleDeleteKeyword(kw.id, kw.word)}
-                    hitSlop={8}
+                    hitSlop={12}
                     style={styles.deleteBtn}
+                    accessibilityLabel={`Delete keyword ${kw.word}`}
                   >
                     <TrashIcon size={18} color={colors.muted} />
                   </TouchableOpacity>
@@ -107,7 +198,9 @@ export default function SettingsScreen() {
                   </View>
                   <View>
                     <Text style={styles.catTitle}>{cat.name}</Text>
-                    <Text style={styles.catSubtitle}>{cat.kind === 'income' ? 'Income' : 'Expense'}</Text>
+                    <Text style={styles.catSubtitle}>
+                      {cat.kind === 'income' ? 'Income Category' : 'Expense Category'}
+                    </Text>
                   </View>
                 </View>
                 <View
@@ -121,19 +214,28 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Section: App Info */}
+        {/* Section: About */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
           <View style={[styles.card, { padding: spacing.lg }]}>
             <Text style={styles.aboutName}>Wini 🛺</Text>
             <Text style={styles.aboutVersion}>Version 1.0.0 (Expo SDK 57)</Text>
             <Text style={styles.aboutDesc}>
-              Personal, voice-first, local-first expense tracker. Your financial data stays entirely on your phone.
+              Personal, voice-first, local-first finance tracker. Your financial data is stored
+              exclusively in local SQLite on your phone. No accounts, no cloud tracking, no subscriptions.
             </Text>
           </View>
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function SettingsScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Settings unavailable">
+      <SettingsContent />
+    </ErrorBoundary>
   );
 }
 
@@ -157,6 +259,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 26,
     fontWeight: '800',
+    fontFamily: typography.bodyBold,
   },
   subtitle: {
     color: colors.muted,
@@ -186,11 +289,89 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: radii.round,
   },
+  staleBadge: {
+    backgroundColor: colors.warningMuted,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radii.round,
+  },
+  staleBadgeText: {
+    color: colors.warning,
+    fontSize: 11,
+    fontWeight: '700',
+  },
   sectionDesc: {
     color: colors.muted,
     fontSize: 13,
     marginBottom: spacing.md,
     lineHeight: 18,
+  },
+  backupCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    borderColor: colors.border,
+    borderWidth: 1,
+    padding: spacing.lg,
+  },
+  backupStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  backupStatusLabel: {
+    color: colors.muted,
+    fontSize: 13,
+  },
+  backupStatusValue: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  reminderBanner: {
+    backgroundColor: 'rgba(255, 200, 87, 0.12)',
+    borderColor: 'rgba(255, 200, 87, 0.3)',
+    borderWidth: 1,
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  reminderText: {
+    color: colors.warning,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  backupActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  backupBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.lg,
+    gap: 6,
+  },
+  backupBtnPrimary: {
+    backgroundColor: colors.primary,
+  },
+  backupBtnPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  backupBtnSecondary: {
+    backgroundColor: colors.elevated,
+    borderColor: colors.border,
+    borderWidth: 1,
+  },
+  backupBtnSecondaryText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
   },
   card: {
     backgroundColor: colors.surface,
@@ -216,7 +397,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.md,
+    minHeight: 48,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
@@ -247,13 +430,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   deleteBtn: {
-    padding: spacing.xs,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.md,
+    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,18 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  BackHandler,
 } from 'react-native';
-import { colors, radii, spacing } from '../src/ui/tokens';
+import * as Haptics from 'expo-haptics';
+import { colors, radii, spacing, typography } from '../src/ui/tokens';
 import { useAppStore } from '../src/state/useAppStore';
 import { formatRupees } from '../src/domain/money';
 import { TransactionWithCategory, TransactionType } from '../src/domain/types';
 import { SearchIcon, TrashIcon } from '../src/ui/icons';
 import { TransactionModal } from '../src/ui/TransactionModal';
+import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 
-export default function HistoryScreen() {
+function HistoryContent() {
   const {
     groupedTransactions,
     categories,
@@ -32,6 +35,18 @@ export default function HistoryScreen() {
 
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  useEffect(() => {
+    const onBack = () => {
+      if (modalVisible) {
+        setModalVisible(false);
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [modalVisible]);
 
   // Filter groups
   const filteredGroups = groupedTransactions
@@ -258,9 +273,13 @@ export default function HistoryScreen() {
                         </Text>
 
                         <TouchableOpacity
-                          onPress={() => deleteTransaction(tx.id)}
-                          hitSlop={8}
+                          onPress={() => {
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                            deleteTransaction(tx.id);
+                          }}
+                          hitSlop={12}
                           style={styles.deleteIcon}
+                          accessibilityLabel="Delete entry"
                         >
                           <TrashIcon size={16} color={colors.muted} />
                         </TouchableOpacity>
@@ -277,7 +296,13 @@ export default function HistoryScreen() {
         {lastDeletedTransaction && (
           <View style={styles.snackbar}>
             <Text style={styles.snackbarText}>Entry deleted</Text>
-            <TouchableOpacity onPress={undoDelete}>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                undoDelete();
+              }}
+              hitSlop={8}
+            >
               <Text style={styles.undoText}>UNDO</Text>
             </TouchableOpacity>
           </View>
@@ -293,6 +318,14 @@ export default function HistoryScreen() {
         />
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function HistoryScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="History unavailable">
+      <HistoryContent />
+    </ErrorBoundary>
   );
 }
 

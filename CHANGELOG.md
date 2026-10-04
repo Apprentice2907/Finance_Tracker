@@ -2,6 +2,48 @@
 
 All notable changes to the Wini project will be documented in this file.
 
+## [Phase 4: Look and Feel] - 2026-10-04
+
+### Added
+- **Wallet-Style Stacked Cards**:
+  - Implemented interactive card stack on Home using `react-native-reanimated` with spring physics.
+  - Active card sits in front with deep drop shadow; peek cards ("Spent today" and "Income this month") sit behind and animate forward on tap with haptic feedback.
+  - Added "Change vs last month" calculation chip (e.g. `↑ 12% vs last mo`, `↓ 5% vs last mo`, or `→ 0%`).
+  - Added privacy eye toggle to mask balances (`••••••`) across all cards.
+- **Insights Screen & Custom SVG Charts**:
+  - Built pure `react-native-svg` daily spending bar chart with rounded tops, interactive day selection tooltip, and gradient shading.
+  - Week (past 7 days) and Month (current month to date) toggle with animated metrics re-calculation.
+  - Top categories breakdown with colored progress bars and percentage of total spend.
+  - Key financial metrics cards: Daily Average Spend and Biggest Expense in period.
+  - Friendly empty state with encouraging copy when no transactions are recorded for the period.
+- **Docked Floating Mic Button**:
+  - Centered floating circular mic button with Reanimated continuous pulsating glow ring.
+- **Quick Action Glass Row**:
+  - Semi-transparent glassmorphic action buttons for Voice Add (mic), Type Add (keyboard), Add Income (plus), and Insights shortcut.
+- **Route Error Boundaries & Android Back Button**:
+  - Wrapped every screen (`index`, `history`, `insights`, `settings`) in `ErrorBoundary`.
+  - Added Android hardware `BackHandler` listeners that dismiss active modal sheets (`VoiceSheet`, `ConfirmSheet`, `TransactionModal`) before exiting the app.
+- **UX & Accessibility Polishing**:
+  - Enforced 48px minimum touch targets across all list rows, delete triggers, and buttons.
+  - Integrated `expo-haptics` across card switching, delete, undo, and tab toggling.
+  - Settings screen updated with Local Backup & Restore preview, `last_backup_at` display, and >14 days stale backup warning banner.
+
+### Changed
+- `src/domain/dates.ts`: Added `getPreviousMonthRange`, `getPast7DaysRange`, `formatDayShort`, and `getDateRangeList`.
+- `src/state/useAppStore.ts`: Added `previousMonthTotals`, `changeVsLastMonthPercent`, and `getInsightsData`.
+- `src/ui/icons.tsx`: Added `KeyboardIcon`, `ArrowTrendUpIcon`, `ArrowTrendDownIcon`, `ExportIcon`, `ImportIcon`.
+- `app/_layout.tsx`: Removed unused placeholder tab route.
+
+### Verified
+- Automated test suite passed with 121 tests across 4 test suites.
+- TypeScript strict typecheck passed (`tsc --noEmit` exited with 0 errors).
+- UI layout responsive and tested for 360-412px widths with 0 overflow.
+
+### Known Gaps
+- Physical haptics and hardware back button behavior require validation on a physical Android handset.
+
+---
+
 ## [Phase 3: Voice and Confirm Flow] - 2026-10-04
 
 ### Added
