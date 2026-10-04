@@ -8,10 +8,11 @@
  * the exact same result. That is why 100+ tests can run against it in seconds!
  */
 
-import { KeywordMap, resolveCategoryKeyword } from './categories';
+import { DEFAULT_BUILTIN_KEYWORDS, KeywordMap, resolveCategoryKeyword } from './categories';
 import { extractDateFromUtterance } from './dates';
 import { isNumberWord, parseNumberWords } from './numberWords';
 import { rupeesToPaise } from '../domain/money';
+import { fuzzyMatchKeyword, normalizeMishearings, PROTECTED_WORDS } from './misheard';
 
 export interface ParseResult {
   type: 'expense' | 'income';
@@ -301,7 +302,16 @@ export function parseUtterance(
       };
     }
 
-    const cleanInput = text.trim();
+    const kwRecord: Record<string, string> = {};
+    if (keywords) {
+      if (keywords instanceof Map) {
+        for (const [k, v] of keywords.entries()) kwRecord[k.toLowerCase()] = v;
+      } else {
+        for (const [k, v] of Object.entries(keywords)) kwRecord[k.toLowerCase()] = v;
+      }
+    }
+
+    const cleanInput = normalizeMishearings(text.trim(), kwRecord);
     const lowerInput = cleanInput.toLowerCase();
 
     // 1. Determine Type (income vs expense)
@@ -356,6 +366,42 @@ export function parseUtterance(
           matchedKeyword = resolved.matchedKeyword;
           categoryTokenIndices.add(i);
           break;
+        }
+      }
+    }
+
+    // Fuzzy keyword fallback (edit distance 1-2 on 4+ letter tokens) if still not matched
+    if (!detectedCategory) {
+      const allKnownKeywords = new Set<string>(Object.keys(DEFAULT_BUILTIN_KEYWORDS));
+      if (keywords) {
+        if (keywords instanceof Map) {
+          for (const k of keywords.keys()) allKnownKeywords.add(k.toLowerCase());
+        } else {
+          for (const k of Object.keys(keywords)) allKnownKeywords.add(k.toLowerCase());
+        }
+      }
+
+      for (let i = 0; i < tokens.length; i++) {
+        if (amountTokenIndices.has(i)) continue;
+        const word = tokens[i].toLowerCase();
+        if (
+          PROTECTED_WORDS.has(word) ||
+          CURRENCY_WORDS.has(word) ||
+          isNumberWord(word) ||
+          word.length < 4
+        ) {
+          continue;
+        }
+
+        const fuzzy = fuzzyMatchKeyword(word, allKnownKeywords);
+        if (fuzzy) {
+          const resolved = resolveCategoryKeyword(fuzzy, keywords);
+          if (resolved) {
+            detectedCategory = resolved.category;
+            matchedKeyword = resolved.matchedKeyword;
+            categoryTokenIndices.add(i);
+            break;
+          }
         }
       }
     }
@@ -443,4 +489,50 @@ export function parseUtterance(
       confidence: 0,
     };
   }
+}
+
+/**
+ * Parses every transcript alternative returned by the speech recognizer,
+ * and selects the candidate with the highest parser confidence score.
+ * Ties preserve the recognizer's first candidate.
+ */
+export function parseBestAlternative(
+  alternatives: string[],
+  now: Date = new Date(),
+  tz: string = 'Asia/Kolkata',
+  keywords?: KeywordMap
+): { bestParsed: ParseResult; bestTranscript: string } {
+  if (!alternatives || alternatives.length === 0) {
+    return {
+      bestParsed: parseUtterance('', now, tz, keywords),
+      bestTranscript: '',
+    };
+  }
+
+  let bestParsed = parseUtterance(alternatives[0], now, tz, keywords);
+  let bestTranscript = alternatives[0];
+
+  const scoreCandidate = (p: ParseResult): number => {
+    let s = p.confidence;
+    if (p.amountPaise !== null && p.amountPaise > 0) s += 0.3;
+    if (p.category !== null) s += 0.15;
+    return s;
+  };
+
+  let bestScore = scoreCandidate(bestParsed);
+
+  for (let i = 1; i < alternatives.length; i++) {
+    const alt = alternatives[i];
+    if (!alt || !alt.trim()) continue;
+    const parsed = parseUtterance(alt, now, tz, keywords);
+    const score = scoreCandidate(parsed);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestParsed = parsed;
+      bestTranscript = alt;
+    }
+  }
+
+  return { bestParsed, bestTranscript };
 }

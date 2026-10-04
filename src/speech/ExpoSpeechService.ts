@@ -17,6 +17,82 @@ import {
   ExpoSpeechRecognitionResultEvent,
 } from 'expo-speech-recognition';
 import { SpeechService, SpeechServiceCallbacks, SpeechState } from './SpeechService';
+import { DEFAULT_BUILTIN_KEYWORDS } from '../parser/categories';
+
+const DEFAULT_CONTEXTUAL_STRINGS = [
+  ...Object.keys(DEFAULT_BUILTIN_KEYWORDS),
+  'rupees',
+  'rupaye',
+  'rupiya',
+  'rupee',
+  'rs',
+  'bucks',
+  'inr',
+  'kal',
+  'parso',
+  'today',
+  'yesterday',
+  'aaj',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+  'twenty',
+  'thirty',
+  'forty',
+  'fifty',
+  'hundred',
+  'thousand',
+  'lakh',
+  'crore',
+  'ek',
+  'do',
+  'teen',
+  'chaar',
+  'paanch',
+  'chhah',
+  'saat',
+  'aath',
+  'nau',
+  'das',
+  'gyarah',
+  'barah',
+  'terah',
+  'chaudah',
+  'pandrah',
+  'solah',
+  'satrah',
+  'atharah',
+  'unnis',
+  'bees',
+  'pachees',
+  'tees',
+  'paintees',
+  'chalis',
+  'pachas',
+  'saath',
+  'sattar',
+  'assi',
+  'nabbe',
+  'sau',
+  'hazaar',
+  'paid',
+  'spent',
+  'received',
+  'got',
+  'add',
+];
+
+export interface ExpoSpeechServiceOptions {
+  preferOnDevice?: boolean;
+  contextualStrings?: string[];
+}
 
 export class ExpoSpeechService implements SpeechService {
   public readonly engineName = 'expo';
@@ -24,6 +100,16 @@ export class ExpoSpeechService implements SpeechService {
   private callbacks: SpeechServiceCallbacks = {};
   private subscriptions: { remove: () => void }[] = [];
   private fallbackToOnline = false;
+  private preferOnDevice: boolean;
+  private contextualStrings: string[];
+  private startTime = 0;
+
+  constructor(options: ExpoSpeechServiceOptions = {}) {
+    this.preferOnDevice = options.preferOnDevice ?? true;
+    this.contextualStrings = Array.from(
+      new Set([...DEFAULT_CONTEXTUAL_STRINGS, ...(options.contextualStrings || [])])
+    );
+  }
 
   getState(): SpeechState {
     return this.state;
@@ -65,6 +151,7 @@ export class ExpoSpeechService implements SpeechService {
 
   async startListening(callbacks: SpeechServiceCallbacks): Promise<void> {
     this.callbacks = callbacks;
+    this.startTime = Date.now();
 
     // Check permissions first
     const hasPermission = await this.hasPermissions();
@@ -90,12 +177,21 @@ export class ExpoSpeechService implements SpeechService {
     const resultSub = ExpoSpeechRecognitionModule.addListener(
       'result',
       (event: ExpoSpeechRecognitionResultEvent) => {
-        const transcript = event.results?.[0]?.transcript ?? '';
+        const alternatives = (event.results || [])
+          .map((r) => r.transcript)
+          .filter((t) => Boolean(t && t.trim()));
+        const transcript = alternatives[0] ?? '';
         if (!transcript) return;
 
         if (event.isFinal) {
           this.setState('processing');
-          this.callbacks.onFinalTranscript?.(transcript);
+          const latencyMs = Date.now() - this.startTime;
+          this.callbacks.onFinalTranscript?.(transcript, {
+            alternatives,
+            latencyMs,
+            engine: 'expo',
+            confidence: event.results?.[0]?.confidence,
+          });
         } else {
           this.callbacks.onPartialTranscript?.(transcript);
         }
@@ -138,6 +234,7 @@ export class ExpoSpeechService implements SpeechService {
 
     // Check on-device availability
     const supportsOnDevice =
+      this.preferOnDevice &&
       !this.fallbackToOnline &&
       typeof ExpoSpeechRecognitionModule.supportsOnDeviceRecognition === 'function' &&
       ExpoSpeechRecognitionModule.supportsOnDeviceRecognition();
@@ -148,7 +245,12 @@ export class ExpoSpeechService implements SpeechService {
         lang: 'en-IN',
         interimResults: true,
         continuous: false,
+        maxAlternatives: 5,
+        contextualStrings: this.contextualStrings,
         requiresOnDeviceRecognition: supportsOnDevice,
+        androidIntentOptions: {
+          EXTRA_LANGUAGE_MODEL: 'free_form' as any,
+        },
         addsPunctuation: true,
       });
     } catch (err: any) {

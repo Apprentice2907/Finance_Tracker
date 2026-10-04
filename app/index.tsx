@@ -45,7 +45,7 @@ import {
 import { TransactionModal } from '../src/ui/TransactionModal';
 import { VoiceSheet } from '../src/ui/VoiceSheet';
 import { ConfirmSheet } from '../src/ui/ConfirmSheet';
-import { parseUtterance, ParseResult } from '../src/parser';
+import { parseBestAlternative, ParseResult } from '../src/parser';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { useRouter } from 'expo-router';
 import { ExpoSpeechService } from '../src/speech/ExpoSpeechService';
@@ -208,18 +208,31 @@ function HomeContent() {
     details?: { alternatives?: string[]; latencyMs?: number; engine?: string }
   ) => {
     setVoiceSheetVisible(false);
-    setCurrentTranscript(transcript);
     setTranscriptSource(source);
 
-    const parsed = parseUtterance(transcript, new Date(), 'Asia/Kolkata', keywordMap);
+    const candidates =
+      details?.alternatives && details.alternatives.length > 0
+        ? details.alternatives
+        : [transcript];
+
+    const { bestParsed, bestTranscript } = parseBestAlternative(
+      candidates,
+      new Date(),
+      'Asia/Kolkata',
+      keywordMap
+    );
+
+    const parsed = bestParsed;
+    const effectiveTranscript = bestTranscript || transcript;
+    setCurrentTranscript(effectiveTranscript);
 
     let logId: string | null = null;
     if (source === 'voice' && keepVoiceLog) {
       try {
         const entry = await addVoiceLog({
           engine: details?.engine || voiceEngine || 'expo',
-          raw_transcript: transcript,
-          alternatives_json: JSON.stringify(details?.alternatives || [transcript]),
+          raw_transcript: effectiveTranscript,
+          alternatives_json: JSON.stringify(candidates),
           parsed_json: JSON.stringify(parsed),
           final_saved_json: null,
           corrected: false,

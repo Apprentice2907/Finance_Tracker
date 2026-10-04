@@ -27,6 +27,7 @@ import { colors, radii, spacing } from './tokens';
 import { MicIcon } from './icons';
 import { SpeechService, SpeechState } from '../speech/SpeechService';
 import { ExpoSpeechService } from '../speech/ExpoSpeechService';
+import { useAppStore } from '../state/useAppStore';
 
 interface VoiceSheetProps {
   visible: boolean;
@@ -47,13 +48,18 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
   onTranscriptReady,
   speechService,
 }) => {
+  const { preferOnDevice, keywords } = useAppStore();
   const [speechState, setSpeechState] = useState<SpeechState>('idle');
   const [partialTranscript, setPartialTranscript] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isTypingMode, setIsTypingMode] = useState(initialMode === 'typed');
   const [typedText, setTypedText] = useState('');
 
-  const service = useMemo(() => speechService || new ExpoSpeechService(), [speechService]);
+  const learnedWords = useMemo(() => keywords.map((k) => k.word), [keywords]);
+  const service = useMemo(
+    () => speechService || new ExpoSpeechService({ preferOnDevice, contextualStrings: learnedWords }),
+    [speechService, preferOnDevice, learnedWords]
+  );
   const pulseAnim = useMemo(() => new Animated.Value(1), []);
 
   useEffect(() => {
