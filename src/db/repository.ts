@@ -459,6 +459,10 @@ export class Repository {
     };
   }
 
+  async deleteKeyword(id: string): Promise<void> {
+    await this.db.runAsync(`DELETE FROM keyword_map WHERE id = ?;`, [id]);
+  }
+
   // --- Settings ---
 
   async getSetting(key: string): Promise<string | null> {

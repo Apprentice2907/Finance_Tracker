@@ -6,16 +6,26 @@ import {
   Transaction,
   CreateTransactionInput,
   UpdateTransactionInput,
+  KeywordMapEntry,
 } from '../domain/types';
 import { getRepository, initDatabase } from '../db';
 import { getTodayIndia, getStartOfMonth, getEndOfMonth } from '../domain/dates';
+
+export interface KeywordWithCategory extends KeywordMapEntry {
+  category_name?: string;
+  category_emoji?: string;
+  category_color?: string;
+}
 
 interface AppState {
   isInitialized: boolean;
   isLoading: boolean;
   error: string | null;
+  bannerMessage: string | null;
   categories: Category[];
   groupedTransactions: DayGroup[];
+  keywords: KeywordWithCategory[];
+  keywordMap: Record<string, string>; // word -> category_name
   currentMonthTotals: PeriodTotals;
   todayTotals: PeriodTotals;
   lastDeletedTransaction: Transaction | null;
@@ -27,6 +37,9 @@ interface AppState {
   deleteTransaction: (id: string) => Promise<void>;
   undoDelete: () => Promise<void>;
   learnKeyword: (word: string, categoryId: string) => Promise<void>;
+  deleteKeyword: (id: string) => Promise<void>;
+  showBanner: (msg: string, durationMs?: number) => void;
+  clearBanner: () => void;
   clearError: () => void;
 }
 
@@ -37,12 +50,17 @@ const emptyTotals: PeriodTotals = {
   count: 0,
 };
 
+let bannerTimeout: any = null;
+
 export const useAppStore = create<AppState>((set, get) => ({
   isInitialized: false,
   isLoading: false,
   error: null,
+  bannerMessage: null,
   categories: [],
   groupedTransactions: [],
+  keywords: [],
+  keywordMap: {},
   currentMonthTotals: emptyTotals,
   todayTotals: emptyTotals,
   lastDeletedTransaction: null,
@@ -66,6 +84,32 @@ export const useAppStore = create<AppState>((set, get) => ({
       const repo = getRepository();
       const categories = await repo.getCategories();
       const groupedTransactions = await repo.listTransactionsGroupedByDay();
+      const rawKeywords = await repo.getKeywords();
+
+      // Map category details onto keywords
+      const categoryMap = new Map<string, Category>();
+      for (const cat of categories) {
+        categoryMap.set(cat.id, cat);
+      }
+
+      const keywords: KeywordWithCategory[] = rawKeywords.map((kw) => {
+        const cat = categoryMap.get(kw.category_id);
+        return {
+          ...kw,
+          category_name: cat?.name,
+          category_emoji: cat?.emoji,
+          category_color: cat?.color,
+        };
+      });
+
+      // Build word -> category name map for parser
+      const keywordMap: Record<string, string> = {};
+      for (const kw of rawKeywords) {
+        const cat = categoryMap.get(kw.category_id);
+        if (cat) {
+          keywordMap[kw.word.toLowerCase()] = cat.name;
+        }
+      }
 
       const today = getTodayIndia();
       const startOfMonth = getStartOfMonth(today);
@@ -79,12 +123,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         categories,
         groupedTransactions,
+        keywords,
+        keywordMap,
         currentMonthTotals,
         todayTotals,
         error: null,
       });
     } catch (err: any) {
-      set({ error: err?.message || 'Failed to load transactions' });
+      set({ error: err?.message || 'Failed to load app data' });
     }
   },
 
@@ -142,11 +188,37 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   learnKeyword: async (word: string, categoryId: string) => {
     try {
+      const cleanWord = word.trim().toLowerCase();
+      if (!cleanWord || !categoryId) return;
       const repo = getRepository();
-      await repo.setKeyword(word, categoryId);
+      await repo.setKeyword(cleanWord, categoryId);
+      await get().refresh();
     } catch (err: any) {
       set({ error: err?.message || 'Failed to save learned keyword' });
     }
+  },
+
+  deleteKeyword: async (id: string) => {
+    try {
+      const repo = getRepository();
+      await repo.deleteKeyword(id);
+      await get().refresh();
+    } catch (err: any) {
+      set({ error: err?.message || 'Failed to delete learned keyword' });
+    }
+  },
+
+  showBanner: (msg: string, durationMs = 3500) => {
+    if (bannerTimeout) clearTimeout(bannerTimeout);
+    set({ bannerMessage: msg });
+    bannerTimeout = setTimeout(() => {
+      set({ bannerMessage: null });
+    }, durationMs);
+  },
+
+  clearBanner: () => {
+    if (bannerTimeout) clearTimeout(bannerTimeout);
+    set({ bannerMessage: null });
   },
 
   clearError: () => set({ error: null }),

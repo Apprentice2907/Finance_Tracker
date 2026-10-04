@@ -24,6 +24,9 @@ const INCOME_TRIGGERS = [
   'refund',
   'cashback',
   'stipend',
+  'bonus',
+  'dividend',
+  'interest',
 ];
 
 const CURRENCY_WORDS = new Set([
@@ -64,8 +67,23 @@ const COMMAND_WORDS = new Set([
   'me',
   'mein',
   'par',
-  'and',
-  '&',
+  'worth',
+  'cost',
+]);
+
+const IDENTIFIER_PREFIXES = new Set([
+  'room',
+  'bus',
+  'flight',
+  'train',
+  'table',
+  'seat',
+  'sector',
+  'gate',
+  'model',
+  'class',
+  'flat',
+  'shop',
 ]);
 
 function toTitleCase(str: string): string {
@@ -77,18 +95,49 @@ function toTitleCase(str: string): string {
     .join(' ');
 }
 
-interface AmountExtraction {
-  amountRupees: number | null;
-  matchedTokens: Set<number>; // indices of tokens consumed
+interface AmountCandidate {
+  amountRupees: number;
+  indices: number[];
+  score: number;
 }
 
 /**
- * Extracts amount in Rupees from utterance tokens.
+ * Extracts the most probable amount in Rupees from utterance tokens.
+ * Handles multiple numbers in a sentence (e.g. quantity vs total: "2 chai 20 rupees", "room 101 rent 15000").
  */
-function extractAmount(tokens: string[]): AmountExtraction {
-  const matched = new Set<number>();
+function extractAmount(tokens: string[]): { amountRupees: number | null; matchedTokens: Set<number> } {
+  const candidates: AmountCandidate[] = [];
 
-  // 1. Look for numeric patterns: "1,250", "250.50", "10", "2k", "1.5k", "2 lakh", "1.5 lakh"
+  // Helper to check if adjacent token is currency
+  const hasAdjacentCurrency = (startIdx: number, endIdx: number): boolean => {
+    if (startIdx > 0 && CURRENCY_WORDS.has(tokens[startIdx - 1].toLowerCase())) {
+      return true;
+    }
+    if (endIdx + 1 < tokens.length && CURRENCY_WORDS.has(tokens[endIdx + 1].toLowerCase())) {
+      return true;
+    }
+    return false;
+  };
+
+  // Helper to check if preceded by command / action word
+  const hasPrecedingAction = (startIdx: number): boolean => {
+    if (startIdx > 0) {
+      const prev = tokens[startIdx - 1].toLowerCase();
+      return prev === 'paid' || prev === 'spent' || prev === 'for' || prev === 'worth' || prev === 'of';
+    }
+    return false;
+  };
+
+  // Helper to check if preceded by identifier (room 101, bus 21)
+  const hasPrecedingIdentifier = (startIdx: number): boolean => {
+    if (startIdx > 0) {
+      const prev = tokens[startIdx - 1].toLowerCase();
+      return IDENTIFIER_PREFIXES.has(prev);
+    }
+    return false;
+  };
+
+  // 1. Scan numeric patterns
   for (let i = 0; i < tokens.length; i++) {
     const raw = tokens[i].replace(/[₹,]/g, '');
 
@@ -96,54 +145,85 @@ function extractAmount(tokens: string[]): AmountExtraction {
     const kMatch = raw.match(/^(\d+(?:\.\d+)?)\s*k$/i);
     if (kMatch) {
       const val = parseFloat(kMatch[1]) * 1000;
-      matched.add(i);
-      return { amountRupees: val, matchedTokens: matched };
+      let score = 80;
+      if (hasAdjacentCurrency(i, i)) score += 50;
+      if (hasPrecedingAction(i)) score += 30;
+      candidates.push({ amountRupees: val, indices: [i], score });
+      continue;
     }
 
     // Check "2m"
     const mMatch = raw.match(/^(\d+(?:\.\d+)?)\s*m$/i);
     if (mMatch) {
       const val = parseFloat(mMatch[1]) * 1000000;
-      matched.add(i);
-      return { amountRupees: val, matchedTokens: matched };
+      let score = 80;
+      if (hasAdjacentCurrency(i, i)) score += 50;
+      candidates.push({ amountRupees: val, indices: [i], score });
+      continue;
     }
 
-    // Check if current token is a numeric digit (integer or decimal)
+    // Check numeric digits
     const numMatch = raw.match(/^(\d+(?:\.\d+)?)$/);
     if (numMatch) {
       const baseNum = parseFloat(numMatch[1]);
-      matched.add(i);
+      let consumedIndices = [i];
+      let val = baseNum;
+      let hasMultiplier = false;
 
-      // Check if followed by multiplier token: "k", "lakh", "lakhs", "crore", "crores", "thousand", "hundred"
+      // Check multiplier token
       if (i + 1 < tokens.length) {
         const next = tokens[i + 1].toLowerCase();
         if (next === 'k') {
-          matched.add(i + 1);
-          return { amountRupees: baseNum * 1000, matchedTokens: matched };
-        }
-        if (next === 'lakh' || next === 'lakhs' || next === 'lac' || next === 'lacs') {
-          matched.add(i + 1);
-          return { amountRupees: baseNum * 100000, matchedTokens: matched };
-        }
-        if (next === 'crore' || next === 'crores') {
-          matched.add(i + 1);
-          return { amountRupees: baseNum * 10000000, matchedTokens: matched };
-        }
-        if (next === 'thousand') {
-          matched.add(i + 1);
-          return { amountRupees: baseNum * 1000, matchedTokens: matched };
-        }
-        if (next === 'hundred') {
-          matched.add(i + 1);
-          return { amountRupees: baseNum * 100, matchedTokens: matched };
+          val = baseNum * 1000;
+          consumedIndices = [i, i + 1];
+          hasMultiplier = true;
+        } else if (next === 'lakh' || next === 'lakhs' || next === 'lac' || next === 'lacs') {
+          val = baseNum * 100000;
+          consumedIndices = [i, i + 1];
+          hasMultiplier = true;
+        } else if (next === 'crore' || next === 'crores') {
+          val = baseNum * 10000000;
+          consumedIndices = [i, i + 1];
+          hasMultiplier = true;
+        } else if (next === 'thousand') {
+          val = baseNum * 1000;
+          consumedIndices = [i, i + 1];
+          hasMultiplier = true;
+        } else if (next === 'hundred') {
+          val = baseNum * 100;
+          consumedIndices = [i, i + 1];
+          hasMultiplier = true;
         }
       }
 
-      return { amountRupees: baseNum, matchedTokens: matched };
+      const endIdx = consumedIndices[consumedIndices.length - 1];
+      let score = 20;
+
+      if (hasMultiplier) score += 60;
+      if (hasAdjacentCurrency(i, endIdx)) score += 80;
+      if (hasPrecedingAction(i)) score += 40;
+      if (hasPrecedingIdentifier(i)) score -= 100;
+
+      // Penalize small quantity numbers (1-10) when not attached to currency and followed by a noun
+      if (!hasMultiplier && !hasAdjacentCurrency(i, endIdx) && baseNum <= 10 && Number.isInteger(baseNum)) {
+        if (endIdx + 1 < tokens.length && !CURRENCY_WORDS.has(tokens[endIdx + 1].toLowerCase())) {
+          score -= 40;
+        }
+      }
+
+      // Slightly favor numbers appearing later in utterance (common in Hinglish e.g. "2 chai 20")
+      score += Math.min(i * 2, 20);
+
+      candidates.push({ amountRupees: val, indices: consumedIndices, score });
+
+      if (hasMultiplier) {
+        i++; // skip multiplier
+      }
+      continue;
     }
   }
 
-  // 2. Look for consecutive number words: "ten", "twenty five", "one hundred fifty", "das", "dedh sau", etc.
+  // 2. Scan number word patterns
   for (let i = 0; i < tokens.length; i++) {
     if (isNumberWord(tokens[i])) {
       const wordGroup: string[] = [];
@@ -160,13 +240,32 @@ function extractAmount(tokens: string[]): AmountExtraction {
 
       const parsed = parseNumberWords(wordGroup);
       if (parsed !== null && parsed > 0) {
-        indices.forEach((idx) => matched.add(idx));
-        return { amountRupees: parsed, matchedTokens: matched };
+        const endIdx = indices[indices.length - 1];
+        let score = 30;
+
+        if (hasAdjacentCurrency(i, endIdx)) score += 80;
+        if (hasPrecedingAction(i)) score += 40;
+        if (hasPrecedingIdentifier(i)) score -= 100;
+        score += Math.min(i * 2, 20);
+
+        candidates.push({ amountRupees: parsed, indices, score });
+        i = endIdx;
       }
     }
   }
 
-  return { amountRupees: null, matchedTokens: matched };
+  if (candidates.length === 0) {
+    return { amountRupees: null, matchedTokens: new Set() };
+  }
+
+  // Pick candidate with highest score
+  candidates.sort((a, b) => b.score - a.score);
+  const best = candidates[0];
+
+  return {
+    amountRupees: best.amountRupees,
+    matchedTokens: new Set(best.indices),
+  };
 }
 
 export function parseUtterance(
@@ -201,10 +300,9 @@ export function parseUtterance(
     const { date, matchedPhrase: dateMatchedPhrase } = extractDateFromUtterance(cleanInput, now);
 
     // 3. Tokenize for Amount and Category extraction
-    // Normalize punctuation
     const normalized = cleanInput
       .replace(/[₹]/g, ' ₹ ')
-      .replace(/[,]/g, '') // remove thousands commas inside numbers
+      .replace(/[,]/g, '')
       .replace(/[!?;:()]/g, ' ');
 
     const tokens = normalized.split(/\s+/).filter(Boolean);
@@ -218,7 +316,7 @@ export function parseUtterance(
     let matchedKeyword: string | undefined = undefined;
     const categoryTokenIndices = new Set<number>();
 
-    // Check multi-word keywords first (e.g. "got paid", "ice cream", custom 2-word keywords)
+    // Check multi-word keywords first (e.g. "got paid", "ice cream", "pav bhaji", custom 2-word keywords)
     for (let i = 0; i < tokens.length - 1; i++) {
       const twoWord = `${tokens[i]} ${tokens[i + 1]}`.toLowerCase();
       const resolved = resolveCategoryKeyword(twoWord, keywords);
@@ -234,7 +332,6 @@ export function parseUtterance(
     // Check single word keywords if not matched
     if (!detectedCategory) {
       for (let i = 0; i < tokens.length; i++) {
-        // Skip tokens already consumed by amount
         if (amountTokenIndices.has(i)) continue;
 
         const word = tokens[i].toLowerCase();
@@ -254,7 +351,6 @@ export function parseUtterance(
     }
 
     // 6. Extract Note
-    // Remove amount tokens, currency tokens, command tokens, date phrase tokens, and income trigger tokens
     const dateTokens = new Set(
       dateMatchedPhrase
         .toLowerCase()
@@ -273,7 +369,15 @@ export function parseUtterance(
       if (CURRENCY_WORDS.has(lower)) continue;
       if (COMMAND_WORDS.has(lower)) continue;
       if (dateTokens.has(lower)) continue;
-      if (isIncome && (lower === 'got' || lower === 'received' || lower === 'credited' || lower === 'earned' || lower === 'mila' || lower === 'aaya')) {
+      if (
+        isIncome &&
+        (lower === 'got' ||
+          lower === 'received' ||
+          lower === 'credited' ||
+          lower === 'earned' ||
+          lower === 'mila' ||
+          lower === 'aaya')
+      ) {
         continue;
       }
 
@@ -294,9 +398,6 @@ export function parseUtterance(
     }
 
     // 7. Calculate Confidence
-    // High (0.95) when amount AND category are found.
-    // Medium (0.6) when amount is found without category.
-    // Low (0.1) otherwise (no amount).
     let confidence = 0.1;
     if (amountPaise !== null) {
       if (detectedCategory !== null) {
@@ -318,7 +419,6 @@ export function parseUtterance(
       matchedKeyword,
     };
   } catch (_err) {
-    // Parser must NEVER throw
     return {
       type: 'expense',
       amountPaise: null,

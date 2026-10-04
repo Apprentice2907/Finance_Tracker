@@ -15,6 +15,9 @@ import { formatRupees } from '../src/domain/money';
 import { TransactionWithCategory, TransactionType } from '../src/domain/types';
 import { EyeIcon, PlusIcon, TrashIcon, MicIcon } from '../src/ui/icons';
 import { TransactionModal } from '../src/ui/TransactionModal';
+import { VoiceSheet } from '../src/ui/VoiceSheet';
+import { ConfirmSheet } from '../src/ui/ConfirmSheet';
+import { parseUtterance, ParseResult } from '../src/parser';
 
 export default function HomeScreen() {
   const {
@@ -22,18 +25,29 @@ export default function HomeScreen() {
     currentMonthTotals,
     todayTotals,
     categories,
+    keywordMap,
     addTransaction,
     updateTransaction,
     deleteTransaction,
     undoDelete,
+    learnKeyword,
     lastDeletedTransaction,
+    bannerMessage,
+    showBanner,
   } = useAppStore();
 
   const [hideBalances, setHideBalances] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>('expense');
-  const [activeCardIndex, setActiveCardIndex] = useState(0); // 0 = month spend, 1 = today, 2 = income
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+
+  // Voice & Confirm sheets
+  const [voiceSheetVisible, setVoiceSheetVisible] = useState(false);
+  const [confirmSheetVisible, setConfirmSheetVisible] = useState(false);
+  const [parsedResult, setParsedResult] = useState<ParseResult | null>(null);
+  const [currentTranscript, setCurrentTranscript] = useState('');
+  const [transcriptSource, setTranscriptSource] = useState<'voice' | 'typed'>('voice');
 
   const recentTransactions = groupedTransactions.flatMap((g) => g.transactions).slice(0, 10);
 
@@ -49,14 +63,79 @@ export default function HomeScreen() {
     setModalVisible(true);
   };
 
-  const handleSaveTransaction = async (data: {
+  const handleTranscriptReady = (transcript: string, source: 'voice' | 'typed') => {
+    setVoiceSheetVisible(false);
+    setCurrentTranscript(transcript);
+    setTranscriptSource(source);
+
+    const parsed = parseUtterance(transcript, new Date(), 'Asia/Kolkata', keywordMap);
+
+    // If confidence is low or amount could not be parsed, open edit form pre-filled
+    if (parsed.confidence < 0.6 || !parsed.amountPaise) {
+      showBanner('Low confidence — please review and complete details');
+      const foundCat = categories.find(
+        (c) => c.name.toLowerCase() === parsed.category?.toLowerCase()
+      );
+      setEditingTransaction({
+        id: '',
+        type: parsed.type,
+        amount_paise: parsed.amountPaise || 0,
+        category_id: foundCat?.id || categories[0]?.id || '',
+        note: parsed.note,
+        occurred_on: parsed.date,
+        source,
+        raw_text: transcript,
+        device_id: '',
+        created_at: '',
+        updated_at: '',
+        deleted_at: null,
+      });
+      setModalDefaultType(parsed.type);
+      setModalVisible(true);
+      return;
+    }
+
+    setParsedResult(parsed);
+    setConfirmSheetVisible(true);
+  };
+
+  const handleConfirmSave = async (data: {
+    type: TransactionType;
+    amountPaise: number;
+    categoryId: string;
+    note: string;
+    occurredOn: string;
+    source: 'voice' | 'typed';
+    rawText: string;
+    learnedWord?: string;
+  }) => {
+    await addTransaction({
+      type: data.type,
+      amount_paise: data.amountPaise,
+      category_id: data.categoryId,
+      note: data.note,
+      occurred_on: data.occurredOn,
+      source: data.source,
+      raw_text: data.rawText,
+    });
+
+    if (data.learnedWord) {
+      await learnKeyword(data.learnedWord, data.categoryId);
+    }
+
+    const cat = categories.find((c) => c.id === data.categoryId);
+    const catName = cat?.name || 'General';
+    showBanner(`Added ${formatRupees(data.amountPaise)} for ${catName}.`);
+  };
+
+  const handleSaveManual = async (data: {
     type: TransactionType;
     amountPaise: number;
     categoryId: string;
     note: string;
     occurredOn: string;
   }) => {
-    if (editingTransaction) {
+    if (editingTransaction && editingTransaction.id) {
       await updateTransaction(editingTransaction.id, {
         type: data.type,
         amount_paise: data.amountPaise,
@@ -64,6 +143,7 @@ export default function HomeScreen() {
         note: data.note,
         occurred_on: data.occurredOn,
       });
+      showBanner('Transaction updated.');
     } else {
       await addTransaction({
         type: data.type,
@@ -73,12 +153,22 @@ export default function HomeScreen() {
         occurred_on: data.occurredOn,
         source: 'manual',
       });
+      const cat = categories.find((c) => c.id === data.categoryId);
+      showBanner(`Added ${formatRupees(data.amountPaise)} for ${cat?.name || 'General'}.`);
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+
+      {/* Floating Global Banner Notification */}
+      {bannerMessage && (
+        <View style={styles.banner}>
+          <Text style={styles.bannerText}>{bannerMessage}</Text>
+        </View>
+      )}
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
@@ -125,7 +215,7 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Foreground Main Card: Month Expense */}
+          {/* Foreground Main Card */}
           <View style={styles.mainCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardLabel}>
@@ -176,13 +266,24 @@ export default function HomeScreen() {
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={[styles.actionBtn, styles.actionBtnPrimary]}
-            onPress={() => openAddModal('expense')}
+            onPress={() => setVoiceSheetVisible(true)}
             activeOpacity={0.8}
           >
             <View style={styles.btnIconWrap}>
-              <PlusIcon size={18} color="#FFFFFF" />
+              <MicIcon size={16} color="#FFFFFF" />
             </View>
-            <Text style={styles.actionBtnText}>Add Expense</Text>
+            <Text style={styles.actionBtnText}>Voice Add</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.actionBtnManual]}
+            onPress={() => openAddModal('expense')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.btnIconWrap, { backgroundColor: colors.surface }]}>
+              <PlusIcon size={16} color={colors.text} />
+            </View>
+            <Text style={styles.actionBtnText}>Manual Add</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -191,9 +292,9 @@ export default function HomeScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.btnIconWrap, { backgroundColor: 'rgba(46, 204, 143, 0.2)' }]}>
-              <PlusIcon size={18} color={colors.income} />
+              <PlusIcon size={16} color={colors.income} />
             </View>
-            <Text style={styles.actionBtnText}>Add Income</Text>
+            <Text style={styles.actionBtnText}>Income</Text>
           </TouchableOpacity>
         </View>
 
@@ -208,7 +309,7 @@ export default function HomeScreen() {
             <Text style={styles.emptyEmoji}>🍃</Text>
             <Text style={styles.emptyTitle}>No expenses yet</Text>
             <Text style={styles.emptySubtitle}>
-              Tap "Add Expense" or the mic below to log your first transaction.
+              Tap the big mic below or "Voice Add" to speak your first expense.
             </Text>
           </View>
         ) : (
@@ -235,6 +336,7 @@ export default function HomeScreen() {
                   </Text>
                   <Text style={styles.txCategory}>
                     {tx.category_name || 'General'} • {tx.occurred_on}
+                    {tx.source === 'voice' && ' • 🎤'}
                   </Text>
                 </View>
 
@@ -262,6 +364,17 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
+      {/* Docked Centered Big Mic Button */}
+      <View style={styles.dockedMicContainer}>
+        <TouchableOpacity
+          style={styles.dockedMicButton}
+          onPress={() => setVoiceSheetVisible(true)}
+          activeOpacity={0.85}
+        >
+          <MicIcon size={30} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
       {/* Undo Snackbar */}
       {lastDeletedTransaction && (
         <View style={styles.snackbar}>
@@ -272,11 +385,47 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {/* Voice & Typed Input Sheet */}
+      <VoiceSheet
+        visible={voiceSheetVisible}
+        onClose={() => setVoiceSheetVisible(false)}
+        onTranscriptReady={handleTranscriptReady}
+      />
+
+      {/* Confirmation Sheet */}
+      <ConfirmSheet
+        visible={confirmSheetVisible}
+        parsed={parsedResult}
+        rawTranscript={currentTranscript}
+        source={transcriptSource}
+        categories={categories}
+        onSave={handleConfirmSave}
+        onEdit={(data) => {
+          setEditingTransaction({
+            id: '',
+            type: data.type,
+            amount_paise: data.amountPaise,
+            category_id: data.categoryId,
+            note: data.note,
+            occurred_on: data.occurredOn,
+            source: data.source,
+            raw_text: data.rawText,
+            device_id: '',
+            created_at: '',
+            updated_at: '',
+            deleted_at: null,
+          });
+          setModalDefaultType(data.type);
+          setModalVisible(true);
+        }}
+        onClose={() => setConfirmSheetVisible(false)}
+      />
+
       {/* Add / Edit Modal */}
       <TransactionModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        onSave={handleSaveTransaction}
+        onSave={handleSaveManual}
         categories={categories}
         initialTransaction={editingTransaction}
         defaultType={modalDefaultType}
@@ -295,7 +444,28 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
-    paddingBottom: 40,
+    paddingBottom: 100, // accommodate docked mic
+  },
+  banner: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: colors.primary,
+    borderRadius: radii.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+    alignItems: 'center',
+  },
+  bannerText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   header: {
     flexDirection: 'row',
@@ -429,7 +599,7 @@ const styles = StyleSheet.create({
   },
   quickActions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginBottom: spacing.xl,
   },
   actionBtn: {
@@ -443,23 +613,27 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   actionBtnPrimary: {
+    backgroundColor: colors.primaryMuted,
+    borderColor: colors.primary,
+  },
+  actionBtnManual: {
     backgroundColor: colors.surface,
   },
   actionBtnIncome: {
     backgroundColor: colors.surface,
   },
   btnIconWrap: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     borderRadius: radii.round,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
+    marginRight: 6,
   },
   actionBtnText: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   sectionHeader: {
@@ -557,9 +731,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+  dockedMicContainer: {
+    position: 'absolute',
+    bottom: 16,
+    alignSelf: 'center',
+    alignItems: 'center',
+  },
+  dockedMicButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 3,
+    borderColor: colors.surface,
+  },
   snackbar: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 84,
     left: spacing.lg,
     right: spacing.lg,
     backgroundColor: colors.elevated,
