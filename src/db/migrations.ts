@@ -1,3 +1,14 @@
+/**
+ * Database schema migration runner for Wini.
+ * Where it fits: Runs automatically on app start before any queries execute, ensuring
+ * the SQLite database matches the code's expected schema version.
+ *
+ * Beginner note: What is a migration? When you release an update in the future (e.g. adding
+ * a new column in v2), existing users already have data on their phones! You cannot just
+ * delete and recreate the database. A migration checks SQLite's internal version number
+ * (`PRAGMA user_version`) and runs only the SQL updates needed to bring the database up to date.
+ */
+
 import { DatabaseAdapter } from './adapter';
 import {
   CURRENT_SCHEMA_VERSION,
@@ -11,6 +22,7 @@ import { DEFAULT_CATEGORIES } from '../domain/categories';
 import { generateId } from '../domain/id';
 
 export async function migrateDatabase(db: DatabaseAdapter): Promise<void> {
+  // PRAGMA user_version stores a single integer (0, 1, 2...) inside the SQLite file header.
   const versionRow = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version;');
   const currentVersion = versionRow?.user_version ?? 0;
 

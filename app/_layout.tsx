@@ -1,3 +1,13 @@
+/**
+ * Root Layout and Tab Navigation shell for Wini.
+ * Where it fits: The root component wrapping every screen in the application.
+ *
+ * Beginner note: What is `expo-router`? Expo Router uses "file-based routing" (similar
+ * to Next.js on the web). Instead of configuring navigation stacks in code, files inside
+ * the `app/` folder automatically become screens: `app/index.tsx` is Home, `app/history.tsx`
+ * is History, etc.
+ */
+
 import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

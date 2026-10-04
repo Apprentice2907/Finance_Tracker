@@ -1,3 +1,13 @@
+/**
+ * Manual transaction entry and edit modal form for Wini.
+ * Where it fits: Opened when tapping the "+" quick action button, editing an entry from
+ * History, or when `ConfirmSheet` routes a low-confidence parse for manual editing.
+ *
+ * Beginner note: This form uses "Controlled Components". In React, form inputs like
+ * `<TextInput>` don't manage their own state internally; instead, their value is driven
+ * by React state (`amountStr`), and every keystroke fires `setAmountStr`.
+ */
+
 import React, { useState } from 'react';
 import {
   Modal,

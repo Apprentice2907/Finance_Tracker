@@ -1,3 +1,4 @@
+// Automated acceptance tests for natural language parsing of amounts, categories, and dates.
 import { parseUtterance } from '../parseUtterance';
 import { getTodayIndia, getRelativeDateIndia } from '../../domain/dates';
 

@@ -18,6 +18,18 @@ import {
 import { generateId } from '../domain/id';
 import { formatDisplayDate } from '../domain/dates';
 
+/**
+ * SQLite Repository: The sole data-access layer for Wini.
+ * Where it fits: Sits between the low-level SQLite database and the Zustand app store.
+ *
+ * WHY is this the ONLY file that touches SQLite?
+ * Beginner note: Separation of Concerns! If UI components wrote raw SQL like
+ * "SELECT * FROM transactions", any table or column rename would require editing dozens
+ * of UI files. By wrapping all database queries inside this `Repository` class, the rest
+ * of the app only works with clean TypeScript objects, and SQLite can be tested or swapped
+ * in one single place.
+ */
+
 export class Repository {
   private db: DatabaseAdapter;
   private cachedDeviceId: string | null = null;
@@ -137,6 +149,9 @@ export class Repository {
     return updated;
   }
 
+  // WHY soft delete? Instead of erasing the row with "DELETE FROM transactions",
+  // we set deleted_at to the current timestamp. This keeps our data safe, enables
+  // the instant "Undo" snackbar after deleting, and preserves financial audit history.
   async softDeleteTransaction(id: string): Promise<void> {
     const now = new Date().toISOString();
     await this.db.runAsync(
@@ -597,6 +612,10 @@ export class Repository {
             );
             importedTransactions++;
           } else if (new Date(tx.updated_at) > new Date(existing.updated_at)) {
+            // HOW merge picks the newest row:
+            // If the transaction already exists on this phone, we compare updated_at
+            // timestamps. If the backup's version is newer, we update the row; if the
+            // local phone's version is newer, we keep the phone's version untouched.
             await this.db.runAsync(
               `UPDATE transactions SET
                 type = ?, amount_paise = ?, category_id = ?, note = ?, occurred_on = ?, source = ?, raw_text = ?, device_id = ?, updated_at = ?, deleted_at = ?

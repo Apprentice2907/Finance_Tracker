@@ -1,3 +1,12 @@
+/**
+ * Main Home Screen for Wini (Wallet Dashboard & Voice Entry).
+ * Where it fits: The primary screen users see when opening Wini (`/`).
+ *
+ * Beginner note: This screen brings together our wallet-style stacked cards (animated
+ * using `react-native-reanimated`), the quick-action glass buttons, recent transactions
+ * with swipe-to-delete + undo, and the docked floating microphone button.
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   View,

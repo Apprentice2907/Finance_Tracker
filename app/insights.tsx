@@ -1,3 +1,12 @@
+/**
+ * Financial Insights and Analytics screen for Wini.
+ * Where it fits: Accessible via the "Insights" tab in the bottom bar (`/insights`).
+ *
+ * Beginner note: Instead of pulling in a heavy third-party charting library, this screen
+ * uses `react-native-svg` to draw custom interactive bar charts directly. This gives us
+ * full control over gradients, rounded bar caps, animations, and zero bundle bloat!
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   View,

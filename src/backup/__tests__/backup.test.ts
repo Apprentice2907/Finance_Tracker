@@ -1,3 +1,4 @@
+// Automated tests for backup schema validation, data integrity, and round-trip restore.
 import initSqlJs, { SqlJsStatic } from 'sql.js';
 import { validateBackupData } from '../validation';
 import { SqlJsDatabaseAdapter } from '../../db/adapter';

@@ -1,5 +1,11 @@
 /**
- * Number word definitions and parsers for English and Hindi (Hinglish).
+ * Number word conversion dictionaries and parser for English and Hindi / Hinglish.
+ * Where it fits: Used by `parseUtterance` when the speech recognizer outputs spoken words
+ * instead of digits (e.g. "ten rupees", "das rupaye chai", or "pachas petrol").
+ *
+ * Beginner note: A `Record<string, number>` in TypeScript is like a dictionary or lookup table.
+ * It lets us instantly find the numeric value of any word (e.g. `HINDI_NUMBERS['pachas'] === 50`)
+ * in constant O(1) time without looping.
  */
 
 export const ENGLISH_ONES: Record<string, number> = {

@@ -1,3 +1,14 @@
+/**
+ * Mock SpeechService test double for automated tests and simulations.
+ * Where it fits: Used in Jest unit and integration tests (`confirmFlow.test.ts`)
+ * instead of the native `ExpoSpeechService`.
+ *
+ * Beginner note: What is a "Mock" or "Test Double"? In testing, you don't want tests
+ * waiting for a real human to speak into a microphone. `FakeSpeechService` implements
+ * the same `SpeechService` interface, allowing tests to trigger `emitFinalTranscript("chai 20")`
+ * instantly and verify the app's response with 100% precision.
+ */
+
 import { SpeechService, SpeechServiceCallbacks, SpeechState } from './SpeechService';
 
 export class FakeSpeechService implements SpeechService {

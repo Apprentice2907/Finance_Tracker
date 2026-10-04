@@ -1,5 +1,12 @@
 /**
- * Date utilities with strict Asia/Kolkata (IST = UTC+5:30) timezone handling.
+ * Date calculation and formatting utilities strictly locked to Indian Standard Time (IST).
+ * Where it fits: Used everywhere dates are computed—parser relative dates ("kal", "parso"),
+ * database queries (filtering by month/week), and UI display formatting ("Yesterday").
+ *
+ * Beginner note: Phones and servers often run in UTC (Coordinated Universal Time).
+ * India is UTC+5:30. If you record an expense at 1:00 AM on Sunday in Delhi, it is
+ * still 7:30 PM Saturday in UTC! Locking all calculations to IST ensures that "today"
+ * always matches the user's real calendar day in India.
  */
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;

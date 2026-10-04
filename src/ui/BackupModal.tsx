@@ -1,3 +1,12 @@
+/**
+ * Backup import preview and confirmation modal for Wini.
+ * Where it fits: Triggered after selecting a valid JSON file in Settings → Import Backup.
+ *
+ * Beginner note: Previewing before mutating data is a crucial UX principle.
+ * Showing the user the export date and row counts (e.g. "42 transactions found") gives
+ * them confidence before choosing whether to "Merge" (combine) or "Replace" (wipe & restore).
+ */
+
 import React, { useState } from 'react';
 import {
   Modal,

@@ -1,3 +1,12 @@
+/**
+ * SQLite table schemas and index creation statements for Wini.
+ * Where it fits: Defines the physical structure of tables inside the local SQLite file.
+ *
+ * Beginner note: SQLite is an embedded database engine that stores all data inside
+ * a single file on the user's phone. No database server is needed!
+ * A "schema" is the structure of tables, columns, and rules (like CHECK constraints).
+ */
+
 export const CURRENT_SCHEMA_VERSION = 1;
 
 export const CREATE_CATEGORIES_TABLE = `

@@ -1,3 +1,12 @@
+/**
+ * Settings and Data Management screen for Wini.
+ * Where it fits: Accessible via the "Settings" tab in the bottom bar (`/settings`).
+ *
+ * Beginner note: This screen lets users manage categories, review and delete learned
+ * vocabulary keywords from `keyword_map`, and export/import full JSON backups to safeguard
+ * their data without requiring cloud accounts.
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   View,

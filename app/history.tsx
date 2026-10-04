@@ -1,3 +1,12 @@
+/**
+ * Transaction History screen for Wini.
+ * Where it fits: Accessible via the "History" tab in the bottom bar (`/history`).
+ *
+ * Beginner note: This screen groups transactions by day ("Today", "Yesterday") and computes
+ * daily subtotals. It also demonstrates client-side filtering: as you type in the search box
+ * or tap category filter chips, the list updates instantly without re-querying SQLite!
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   View,

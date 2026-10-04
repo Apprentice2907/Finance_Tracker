@@ -1,3 +1,15 @@
+/**
+ * Backup export and import service for Wini.
+ * Where it fits: Bridges the Settings screen to native file systems (`expo-file-system`),
+ * document pickers (`expo-document-picker`), and the Android share sheet (`expo-sharing`).
+ *
+ * Beginner note: Why use `expo-sharing` instead of saving directly to phone storage?
+ * Android 11+ uses "Scoped Storage" to protect user privacy—apps cannot write directly
+ * to public folders without dangerous permissions. Writing the file to app cache and
+ * sharing it via the Android share sheet lets users save their data anywhere (Google Drive,
+ * WhatsApp, Downloads) safely without requiring any special storage permissions!
+ */
+
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';

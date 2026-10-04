@@ -1,3 +1,13 @@
+/**
+ * Category keyword mapping and resolution dictionary for Wini.
+ * Where it fits: Used by `parseUtterance` to automatically assign categories (Food, Transport,
+ * Shopping, etc.) based on words heard in spoken sentences.
+ *
+ * Beginner note: Notice how `resolveCategoryKeyword` checks `learnedKeywords` FIRST before
+ * checking `DEFAULT_BUILTIN_KEYWORDS`. This allows Wini to learn and remember your personal
+ * vocabulary and custom overrides!
+ */
+
 export type KeywordMap = Record<string, string> | Map<string, string>;
 
 export const DEFAULT_BUILTIN_KEYWORDS: Record<string, string> = {

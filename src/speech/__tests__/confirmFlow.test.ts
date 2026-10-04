@@ -1,3 +1,4 @@
+// Automated integration tests for the voice confirm flow, routing, and learned keywords.
 import initSqlJs, { SqlJsStatic } from 'sql.js';
 import { SqlJsDatabaseAdapter } from '../../db/adapter';
 import { Repository } from '../../db/repository';

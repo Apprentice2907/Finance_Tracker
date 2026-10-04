@@ -1,3 +1,12 @@
+/**
+ * Verification bottom sheet for parsed voice/typed inputs before saving.
+ * Where it fits: Appears right after `parseUtterance` processes speech or text.
+ *
+ * Beginner note: "Human-in-the-loop" AI design: Voice recognition is never 100% perfect
+ * (background noise, accents). Rather than silently saving an incorrect guess, Wini
+ * always displays this sheet so you can confirm or edit the entry with one tap.
+ */
+
 import React, { useState } from 'react';
 import {
   Modal,

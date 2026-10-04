@@ -1,6 +1,12 @@
 /**
- * Database Adapter interface and implementations.
- * Enables running exact SQLite queries on device (via expo-sqlite) and in tests (via sql.js).
+ * Database Adapter interface and concrete implementations.
+ * Where it fits: Bridges our SQLite queries to native `expo-sqlite` on Android and
+ * WebAssembly `sql.js` in Node.js automated test suites.
+ *
+ * Beginner note: What is the "Adapter pattern"? `expo-sqlite` only runs on a real phone
+ * or simulator. If our repository imported `expo-sqlite` directly, automated tests on
+ * your laptop would crash! By creating a `DatabaseAdapter` interface, our repository
+ * can run on any SQLite engine without changing a single line of business logic.
  */
 
 export interface RunResult {

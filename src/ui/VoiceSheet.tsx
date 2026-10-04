@@ -1,3 +1,16 @@
+/**
+ * Voice input bottom sheet modal with audio ripple animation and "Type instead" mode.
+ * Where it fits: Triggered by the floating mic button or keyboard button on the Home screen.
+ *
+ * Beginner note: What is a "Bottom Sheet"? It's a mobile design pattern where a modal
+ * card slides up from the bottom of the screen, letting the user complete an action without
+ * losing sight of where they were.
+ *
+ * Beginner note: What is a React Hook (`useState`, `useEffect`)? Hooks let functional
+ * components remember data (`useState`) and synchronize with outside systems (`useEffect`),
+ * such as starting the microphone when the modal opens and aborting it when closed.
+ */
+
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,

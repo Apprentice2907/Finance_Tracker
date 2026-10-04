@@ -1,3 +1,16 @@
+/**
+ * Production implementation of `SpeechService` using `expo-speech-recognition`.
+ * Where it fits: Bridges React Native UI components directly to Android's native
+ * speech recognition system.
+ *
+ * WHY does on-device speech fall back to online?
+ * Beginner note: Privacy vs Reliability! On-device speech recognition is ideal because
+ * audio never leaves your phone and works without internet. However, Android only supports
+ * offline speech if the user has previously downloaded the offline "English (India)" pack.
+ * If that pack is missing, falling back to online speech ensures the user's voice command
+ * still succeeds instead of throwing an unhelpful error.
+ */
+
 import {
   ExpoSpeechRecognitionModule,
   ExpoSpeechRecognitionErrorEvent,

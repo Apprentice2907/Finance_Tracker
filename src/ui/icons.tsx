@@ -1,3 +1,13 @@
+/**
+ * Custom SVG vector icon components for Wini.
+ * Where it fits: Used throughout navigation tabs, action buttons, and modal dialogs.
+ *
+ * Beginner note: Why use SVG vectors instead of image files (.png)?
+ * SVGs are described with mathematical coordinates (paths), not pixels. They stay sharp
+ * on any screen resolution, don't bloat the app download size, and let us change icon
+ * colors dynamically using React props!
+ */
+
 import React from 'react';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 

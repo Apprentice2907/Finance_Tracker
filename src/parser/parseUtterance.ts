@@ -1,3 +1,13 @@
+/**
+ * The core natural language parsing engine for Wini.
+ * Where it fits: This is the "brain" that receives spoken voice transcripts (or typed text)
+ * and turns them into structured { amountPaise, category, date, note, confidence } objects.
+ *
+ * Beginner note: This is a "pure function"—it has no side effects, doesn't touch the phone's
+ * hardware, and doesn't query the database. Given the same text and date, it always returns
+ * the exact same result. That is why 100+ tests can run against it in seconds!
+ */
+
 import { KeywordMap, resolveCategoryKeyword } from './categories';
 import { extractDateFromUtterance } from './dates';
 import { isNumberWord, parseNumberWords } from './numberWords';
@@ -137,6 +147,11 @@ function extractAmount(tokens: string[]): { amountRupees: number | null; matched
     return false;
   };
 
+  // WHY Candidate Scoring? Real human speech often contains multiple numbers:
+  // e.g. "2 chai 20 rupees", "room 101 rent 15000", or "bus 32 fare 25".
+  // Instead of picking the first number, we score candidates based on context:
+  // +80 for currency words ("rupees", "rs"), +40 for action verbs ("paid", "spent"),
+  // -100 for identifiers ("room", "bus"), and -40 for small quantity numbers ("2 chai").
   // 1. Scan numeric patterns
   for (let i = 0; i < tokens.length; i++) {
     const raw = tokens[i].replace(/[₹,]/g, '');

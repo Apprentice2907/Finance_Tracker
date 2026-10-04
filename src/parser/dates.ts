@@ -1,3 +1,13 @@
+/**
+ * Natural language date phrase extractor for Wini.
+ * Where it fits: Used by `parseUtterance` to detect spoken date references like "yesterday",
+ * "kal", "parso", or "last friday", converting them into ISO `YYYY-MM-DD` strings.
+ *
+ * Beginner note: In Hindi, the word "kal" can mean either tomorrow or yesterday depending
+ * on context. Because people record expenses they have already paid, Wini safely resolves
+ * "kal" to yesterday.
+ */
+
 import { getIndiaDate, getTodayIndia, getRelativeDateIndia } from '../domain/dates';
 
 export interface ExtractedDate {

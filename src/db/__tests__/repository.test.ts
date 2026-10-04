@@ -1,3 +1,4 @@
+// Automated integration tests for the SQLite Repository, migrations, soft deletes, and aggregates.
 import initSqlJs, { SqlJsStatic } from 'sql.js';
 import { SqlJsDatabaseAdapter } from '../adapter';
 import { Repository } from '../repository';

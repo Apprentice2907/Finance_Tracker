@@ -1,4 +1,13 @@
 
+/**
+ * Default categories seed definitions for Wini.
+ * Where it fits: Defines the 8 built-in categories seeded into SQLite when the database
+ * is first created. Also provides category styling (emoji, hex color) across the UI.
+ *
+ * Beginner note: "Seed data" is the initial dummy or foundational data populated into
+ * a fresh database so the user has meaningful categories ready right after install.
+ */
+
 export interface DefaultCategoryDef {
   id: string;
   name: string;

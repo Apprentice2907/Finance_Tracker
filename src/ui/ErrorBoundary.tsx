@@ -1,3 +1,13 @@
+/**
+ * Crash-protection React Error Boundary component for Wini.
+ * Where it fits: Wraps every route in `app/` so runtime errors don't crash the whole app.
+ *
+ * Beginner note: What is an "Error Boundary"? In React, an unhandled error inside a
+ * component will crash the entire app into a blank white screen. An Error Boundary is
+ * like a safety net: it catches rendering errors, logs them, and displays a friendly
+ * "Try Again" screen instead of crashing.
+ */
+
 import React, { Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, radii, spacing } from './tokens';

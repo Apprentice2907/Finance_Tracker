@@ -1,3 +1,13 @@
+/**
+ * Database initialization entry point and singleton manager for Wini.
+ * Where it fits: Called on app startup in `app/_layout.tsx` to open `wini.db` and
+ * run migrations, providing `getRepository()` for the rest of the application.
+ *
+ * Beginner note: What is a "Singleton"? Opening a SQLite file multiple times can
+ * cause file locks and memory waste. A singleton keeps a single shared connection
+ * instance alive and hands it out whenever `getRepository()` is called.
+ */
+
 import { Repository } from './repository';
 import { DatabaseAdapter, ExpoDatabaseAdapter } from './adapter';
 

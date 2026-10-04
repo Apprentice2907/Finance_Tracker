@@ -1,3 +1,13 @@
+/**
+ * Schema validation logic for Wini JSON backup files.
+ * Where it fits: Runs when importing a backup file before handing data to `Repository.restoreBackup`.
+ *
+ * Beginner note: "Defensive Programming"! Never trust user-provided files blindly.
+ * If someone uploads an empty file, a photo, or JSON from another app, passing it to
+ * SQLite could corrupt your database. This validator checks every key, array, and data
+ * type to guarantee the file is a genuine, healthy Wini backup.
+ */
+
 import type { BackupData } from '../domain/types';
 
 export interface ValidationResult {

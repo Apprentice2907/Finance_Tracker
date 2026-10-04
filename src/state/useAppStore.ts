@@ -1,3 +1,13 @@
+/**
+ * Zustand global application state store for Wini.
+ * Where it fits: Sits between the SQLite `Repository` and all UI screens in `app/`.
+ *
+ * Beginner note: What is a "Store"? In React, sharing data across many screens by passing
+ * props down component trees ("prop drilling") quickly becomes messy. A state store is
+ * a single shared object. Any screen can read `currentMonthTotals` or call `addTransaction()`,
+ * and React will automatically re-render only the components that care about that data.
+ */
+
 import { create } from 'zustand';
 import {
   Category,

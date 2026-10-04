@@ -1,6 +1,12 @@
 /**
- * Money utilities for Wini.
- * All monetary amounts in the database and state are strictly integer paise (1 Rupee = 100 paise).
+ * Money utilities for Wini: conversions and Indian currency formatting.
+ * Where it fits: Used by UI components to display human-friendly amounts and
+ * by the database/parser layers to convert user input into exact integer paise.
+ *
+ * Beginner note: In computers, 0.1 + 0.2 === 0.30000000000000004 because binary
+ * cannot represent certain base-10 fractions exactly. In financial software,
+ * standard practice is to store the smallest currency unit (paise or cents) as
+ * integers so addition and subtraction are always 100% exact.
  */
 
 export function paiseToRupees(paise: number): number {

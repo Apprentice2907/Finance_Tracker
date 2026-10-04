@@ -1,6 +1,11 @@
 /**
- * Wini UI Design Tokens (Section 9)
- * Dark navy fintech wallet aesthetic.
+ * Central UI Design Tokens for Wini (Colors, Spacing, Border Radii).
+ * Where it fits: Imported by all React Native components and screens for styling.
+ *
+ * Beginner note: What are "Design Tokens"? Instead of scattering raw hex codes like
+ * `#3B6EF5` and random pixel numbers across 20 files, design tokens store your app's
+ * visual palette in one place. Want to change Wini's theme? Change it here and the
+ * whole app updates consistently!
  */
 
 export const colors = {
