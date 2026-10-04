@@ -12,6 +12,7 @@
 import { SpeechService, SpeechServiceCallbacks, SpeechState } from './SpeechService';
 
 export class FakeSpeechService implements SpeechService {
+  public readonly engineName = 'fake';
   private state: SpeechState = 'idle';
   private callbacks: SpeechServiceCallbacks = {};
   public permissionGranted = true;
@@ -78,10 +79,10 @@ export class FakeSpeechService implements SpeechService {
     }
   }
 
-  emitFinalTranscript(text: string) {
+  emitFinalTranscript(text: string, details?: any) {
     this.state = 'processing';
     this.callbacks.onStateChange?.('processing');
-    this.callbacks.onFinalTranscript?.(text);
+    this.callbacks.onFinalTranscript?.(text, details);
     this.state = 'idle';
     this.callbacks.onStateChange?.('idle');
   }

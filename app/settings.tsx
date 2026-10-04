@@ -16,11 +16,13 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  Switch,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { colors, radii, spacing, typography } from '../src/ui/tokens';
 import { useAppStore } from '../src/state/useAppStore';
-import { TrashIcon, ExportIcon, ImportIcon } from '../src/ui/icons';
+import { TrashIcon, ExportIcon, ImportIcon, MicIcon } from '../src/ui/icons';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { getRepository } from '../src/db';
 import {
@@ -31,13 +33,28 @@ import {
 import { BackupModal } from '../src/ui/BackupModal';
 
 function SettingsContent() {
-  const { categories, keywords, deleteKeyword, showBanner } = useAppStore();
+  const router = useRouter();
+  const {
+    categories,
+    keywords,
+    deleteKeyword,
+    learnKeyword,
+    showBanner,
+    keepVoiceLog,
+    preferOnDevice,
+    voiceEngine,
+    toggleKeepVoiceLog,
+    togglePreferOnDevice,
+    clearVoiceLogs,
+  } = useAppStore();
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
   const [isBackupStale, setIsBackupStale] = useState(false);
   const [importPreview, setImportPreview] = useState<BackupPreview | null>(null);
   const [backupModalVisible, setBackupModalVisible] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [voiceLogCount, setVoiceLogCount] = useState<number>(0);
+  const [suggestedKeywords, setSuggestedKeywords] = useState<{ word: string; categoryId: string; count: number }[]>([]);
 
   useEffect(() => {
     async function fetchBackupInfo() {
@@ -52,12 +69,51 @@ function SettingsContent() {
         } else {
           setIsBackupStale(true);
         }
+
+        const count = await repo.getVoiceLogCount();
+        setVoiceLogCount(count);
+
+        const suggestions = await repo.getSuggestedKeywordsFromVoiceLogs();
+        setSuggestedKeywords(suggestions);
       } catch (err) {
-        console.error('Failed to load backup setting:', err);
+        console.error('Failed to load settings data:', err);
       }
     }
     fetchBackupInfo();
   }, []);
+
+  const handleToggleKeepVoiceLog = async (val: boolean) => {
+    Haptics.selectionAsync().catch(() => {});
+    await toggleKeepVoiceLog(val);
+    showBanner(val ? 'Voice logging enabled.' : 'Voice logging disabled.');
+  };
+
+  const handleTogglePreferOnDevice = async (val: boolean) => {
+    Haptics.selectionAsync().catch(() => {});
+    await togglePreferOnDevice(val);
+    showBanner(
+      val
+        ? 'Preferring on-device recognition (more private).'
+        : 'Preferring online recognition (often more accurate).'
+    );
+  };
+
+  const handleClearVoiceLog = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    await clearVoiceLogs();
+    setVoiceLogCount(0);
+    setSuggestedKeywords([]);
+    showBanner('Voice log cleared.');
+  };
+
+  const handleLearnSuggested = async (word: string, categoryId: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    await learnKeyword(word, categoryId);
+    showBanner(`Learned "${word}"!`);
+    const repo = getRepository();
+    const suggestions = await repo.getSuggestedKeywordsFromVoiceLogs();
+    setSuggestedKeywords(suggestions);
+  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -113,6 +169,132 @@ function SettingsContent() {
         <View style={styles.header}>
           <Text style={styles.title}>Settings ⚙️</Text>
           <Text style={styles.subtitle}>Categories, learned vocabulary & data backup</Text>
+        </View>
+
+        {/* Section: Voice & Accuracy */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Voice & Accuracy</Text>
+          </View>
+          <Text style={styles.sectionDesc}>
+            Configure recognition privacy, test phrases in Voice Lab, and manage correction logs.
+          </Text>
+
+          {/* Voice Lab Navigation Card */}
+          <TouchableOpacity
+            style={styles.voiceLabCard}
+            onPress={() => router.push('/voice-lab')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.voiceLabLeft}>
+              <View style={styles.voiceLabIconWrap}>
+                <MicIcon size={20} color={colors.primary} />
+              </View>
+              <View style={styles.voiceLabTextContainer}>
+                <Text style={styles.voiceLabTitle}>Open Voice Lab 🔬</Text>
+                <Text style={styles.voiceLabDesc}>
+                  Record test phrases, benchmark latency, and inspect alternatives.
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.voiceLabArrow}>→</Text>
+          </TouchableOpacity>
+
+          <View style={styles.card}>
+            {/* Active Voice Engine Row */}
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleTitle}>Recognition Engine</Text>
+                <Text style={styles.toggleSubtitle}>
+                  {voiceEngine === 'whisper' ? 'Whisper (On-device neural model)' : 'Phone Recognizer (Android / System STT)'}
+                </Text>
+              </View>
+              <View style={styles.engineBadgeSmall}>
+                <Text style={styles.engineBadgeSmallText}>
+                  {voiceEngine === 'whisper' ? 'Whisper' : 'System'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Switch: Keep voice log */}
+            <View style={[styles.toggleRow, styles.rowDivider]}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleTitle}>Keep voice log</Text>
+                <Text style={styles.toggleSubtitle}>
+                  Saves heard transcripts & parsed outputs locally for accuracy benchmarking. Audio is never stored.
+                </Text>
+              </View>
+              <Switch
+                value={keepVoiceLog}
+                onValueChange={handleToggleKeepVoiceLog}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            {/* Switch: Prefer on-device recognition */}
+            <View style={[styles.toggleRow, styles.rowDivider]}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleTitle}>Prefer on-device recognition</Text>
+                <Text style={styles.toggleSubtitle}>
+                  On-device recognition keeps audio strictly on phone. Online recognition is often more accurate for mixed Hindi/English accents.
+                </Text>
+              </View>
+              <Switch
+                value={preferOnDevice}
+                onValueChange={handleTogglePreferOnDevice}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            {/* Action: Clear voice log */}
+            <View style={[styles.toggleRow, styles.rowDivider]}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleTitle}>Voice log records</Text>
+                <Text style={styles.toggleSubtitle}>
+                  {voiceLogCount} record{voiceLogCount === 1 ? '' : 's'} in local database.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.clearLogBtn, voiceLogCount === 0 && { opacity: 0.5 }]}
+                onPress={handleClearVoiceLog}
+                disabled={voiceLogCount === 0}
+                activeOpacity={0.8}
+              >
+                <TrashIcon size={14} color={colors.expense} />
+                <Text style={styles.clearLogBtnText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Suggestions from corrections */}
+          {suggestedKeywords.length > 0 && (
+            <View style={styles.suggestionsCard}>
+              <Text style={styles.suggestionsTitle}>💡 Suggestions from Voice Corrections</Text>
+              <Text style={styles.suggestionsDesc}>
+                Words corrected when confirming voice entries:
+              </Text>
+              <View style={styles.suggestionChips}>
+                {suggestedKeywords.map((sug) => {
+                  const cat = categories.find((c) => c.id === sug.categoryId);
+                  return (
+                    <TouchableOpacity
+                      key={`${sug.word}_${sug.categoryId}`}
+                      style={styles.suggestionChip}
+                      onPress={() => handleLearnSuggested(sug.word, sug.categoryId)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.suggestionChipText}>
+                        &ldquo;{sug.word}&rdquo; → {cat?.emoji || '✨'} {cat?.name || 'General'}
+                      </Text>
+                      <Text style={styles.suggestionPlus}>+ Learn</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Section: Backup & Restore */}
@@ -560,5 +742,148 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  engineBadgeSmall: {
+    backgroundColor: `${colors.primary}22`,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: `${colors.primary}44`,
+  },
+  engineBadgeSmallText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  voiceLabCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: `${colors.primary}18`,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: `${colors.primary}44`,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  voiceLabLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+    paddingRight: spacing.sm,
+  },
+  voiceLabIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${colors.primary}22`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceLabTextContainer: {
+    flex: 1,
+  },
+  voiceLabTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  voiceLabDesc: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  voiceLabArrow: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  rowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  toggleTextWrap: {
+    flex: 1,
+  },
+  toggleTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  toggleSubtitle: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  clearLogBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: `${colors.expense}18`,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: `${colors.expense}44`,
+  },
+  clearLogBtnText: {
+    color: colors.expense,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  suggestionsCard: {
+    backgroundColor: `${colors.warning}12`,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: `${colors.warning}33`,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  suggestionsTitle: {
+    color: colors.warning,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  suggestionsDesc: {
+    color: colors.muted,
+    fontSize: 12,
+    marginBottom: spacing.sm,
+  },
+  suggestionChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  suggestionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  suggestionChipText: {
+    color: colors.text,
+    fontSize: 12,
+  },
+  suggestionPlus: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

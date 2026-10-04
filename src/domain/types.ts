@@ -63,6 +63,30 @@ export interface SettingEntry {
   value: string;
 }
 
+export interface VoiceLogEntry {
+  id: string;
+  engine: string;
+  raw_transcript: string;
+  alternatives_json: string;
+  parsed_json: string;
+  final_saved_json: string | null;
+  corrected: boolean | number;
+  latency_ms: number;
+  created_at: string;
+}
+
+export interface CreateVoiceLogInput {
+  id?: string;
+  engine: string;
+  raw_transcript: string;
+  alternatives_json?: string;
+  parsed_json: string;
+  final_saved_json?: string | null;
+  corrected?: boolean;
+  latency_ms?: number;
+  created_at?: string;
+}
+
 export interface PeriodTotals {
   totalExpensePaise: number;
   totalIncomePaise: number;

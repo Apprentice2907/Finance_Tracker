@@ -89,6 +89,12 @@ export default function RootLayout() {
               tabBarIcon: ({ color }) => <SettingsIcon size={22} color={color} />,
             }}
           />
+          <Tabs.Screen
+            name="voice-lab"
+            options={{
+              href: null,
+            }}
+          />
         </Tabs>
       </View>
     </ErrorBoundary>

@@ -309,6 +309,47 @@ describe('Repository Integration Tests (plain Node with SQLite via sql.js)', () 
     expect(restoredKw).not.toBeNull();
     await freshAdapter.closeAsync();
   });
+
+  test('logs voice recognitions and tracks user corrections', async () => {
+    // 1. Initial log entry when phrase is recognized
+    const entry = await repo.addVoiceLog({
+      engine: 'expo',
+      raw_transcript: 'rick shaw 50',
+      alternatives_json: JSON.stringify(['rick shaw 50', 'rickshaw 50']),
+      parsed_json: JSON.stringify({ amountPaise: 5000, category: 'Transport', note: 'rick shaw' }),
+      latency_ms: 320,
+    });
+
+    expect(entry.id).toBeDefined();
+    expect(entry.engine).toBe('expo');
+    expect(entry.raw_transcript).toBe('rick shaw 50');
+    expect(entry.latency_ms).toBe(320);
+    expect(entry.corrected).toBe(false);
+    expect(entry.final_saved_json).toBeNull();
+
+    // 2. User confirms with correction
+    const finalData = JSON.stringify({ amountPaise: 5000, categoryId: 'cat_transport', note: 'Rickshaw' });
+    await repo.updateVoiceLogSaved(entry.id, finalData, true);
+
+    const logs = await repo.getVoiceLogs(10);
+    expect(logs.length).toBe(1);
+    expect(logs[0].id).toBe(entry.id);
+    expect(logs[0].corrected).toBe(true);
+    expect(logs[0].final_saved_json).toBe(finalData);
+
+    const count = await repo.getVoiceLogCount();
+    expect(count).toBe(1);
+
+    // 3. Suggestions from corrections
+    const suggestions = await repo.getSuggestedKeywordsFromVoiceLogs();
+    expect(suggestions.some((s) => s.word === 'rick' || s.word === 'shaw')).toBe(true);
+
+    // 4. Clearing logs
+    await repo.clearVoiceLogs();
+    const emptyLogs = await repo.getVoiceLogs();
+    expect(emptyLogs.length).toBe(0);
+    expect(await repo.getVoiceLogCount()).toBe(0);
+  });
 });
 
 describe('Money utility tests', () => {

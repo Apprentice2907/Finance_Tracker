@@ -19,6 +19,7 @@ import {
 import { SpeechService, SpeechServiceCallbacks, SpeechState } from './SpeechService';
 
 export class ExpoSpeechService implements SpeechService {
+  public readonly engineName = 'expo';
   private state: SpeechState = 'idle';
   private callbacks: SpeechServiceCallbacks = {};
   private subscriptions: { remove: () => void }[] = [];

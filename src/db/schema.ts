@@ -7,7 +7,7 @@
  * A "schema" is the structure of tables, columns, and rules (like CHECK constraints).
  */
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export const CREATE_CATEGORIES_TABLE = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -62,3 +62,21 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 `;
+
+export const CREATE_VOICE_LOG_TABLE = `
+CREATE TABLE IF NOT EXISTS voice_log (
+  id TEXT PRIMARY KEY,
+  engine TEXT NOT NULL,
+  raw_transcript TEXT NOT NULL,
+  alternatives_json TEXT NOT NULL DEFAULT '[]',
+  parsed_json TEXT NOT NULL,
+  final_saved_json TEXT,
+  corrected INTEGER NOT NULL DEFAULT 0,
+  latency_ms INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+`;
+
+export const CREATE_VOICE_LOG_INDEXES = [
+  `CREATE INDEX IF NOT EXISTS idx_voice_log_created_at ON voice_log(created_at);`,
+];

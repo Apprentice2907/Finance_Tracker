@@ -17,6 +17,8 @@ import {
   CREATE_TRANSACTIONS_INDEXES,
   CREATE_KEYWORD_MAP_TABLE,
   CREATE_SETTINGS_TABLE,
+  CREATE_VOICE_LOG_TABLE,
+  CREATE_VOICE_LOG_INDEXES,
 } from './schema';
 import { DEFAULT_CATEGORIES } from '../domain/categories';
 import { generateId } from '../domain/id';
@@ -53,6 +55,20 @@ export async function migrateDatabase(db: DatabaseAdapter): Promise<void> {
     await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('device_id', ?);`, [deviceId]);
     await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('theme', 'dark');`);
     await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('onboarding_done', '0');`);
+
+    await db.execAsync(`PRAGMA user_version = 1;`);
+  }
+
+  if (currentVersion < 2) {
+    // Migration to v2: Voice logging and speech settings
+    await db.execAsync(CREATE_VOICE_LOG_TABLE);
+    for (const indexSql of CREATE_VOICE_LOG_INDEXES) {
+      await db.execAsync(indexSql);
+    }
+
+    await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('keep_voice_log', '1');`);
+    await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('prefer_on_device', '1');`);
+    await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('voice_engine', 'expo');`);
 
     await db.execAsync(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION};`);
   }

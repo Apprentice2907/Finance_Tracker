@@ -14,6 +14,8 @@ import {
   UpdateTransactionInput,
   CreateCategoryInput,
   BackupData,
+  VoiceLogEntry,
+  CreateVoiceLogInput,
 } from '../domain/types';
 import { generateId } from '../domain/id';
 import { formatDisplayDate } from '../domain/dates';
@@ -493,6 +495,122 @@ export class Repository {
       `INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
       [key, value]
     );
+  }
+
+  // --- Voice Log ---
+
+  async addVoiceLog(input: CreateVoiceLogInput): Promise<VoiceLogEntry> {
+    const id = input.id || generateId();
+    const now = input.created_at || new Date().toISOString();
+    const correctedInt = input.corrected ? 1 : 0;
+    const latency = input.latency_ms ?? 0;
+    const alternatives = input.alternatives_json ?? '[]';
+    const finalSaved = input.final_saved_json ?? null;
+
+    await this.db.runAsync(
+      `INSERT INTO voice_log (
+        id, engine, raw_transcript, alternatives_json, parsed_json, final_saved_json, corrected, latency_ms, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [
+        id,
+        input.engine,
+        input.raw_transcript,
+        alternatives,
+        input.parsed_json,
+        finalSaved,
+        correctedInt,
+        latency,
+        now,
+      ]
+    );
+
+    return {
+      id,
+      engine: input.engine,
+      raw_transcript: input.raw_transcript,
+      alternatives_json: alternatives,
+      parsed_json: input.parsed_json,
+      final_saved_json: finalSaved,
+      corrected: Boolean(input.corrected),
+      latency_ms: latency,
+      created_at: now,
+    };
+  }
+
+  async updateVoiceLogSaved(id: string, finalSavedJson: string, corrected: boolean): Promise<void> {
+    await this.db.runAsync(
+      `UPDATE voice_log SET final_saved_json = ?, corrected = ? WHERE id = ?;`,
+      [finalSavedJson, corrected ? 1 : 0, id]
+    );
+  }
+
+  async getVoiceLogs(limit = 100): Promise<VoiceLogEntry[]> {
+    const rows = await this.db.getAllAsync<any>(
+      `SELECT * FROM voice_log ORDER BY created_at DESC LIMIT ?;`,
+      [limit]
+    );
+    return rows.map((r) => ({
+      ...r,
+      corrected: Boolean(r.corrected),
+    }));
+  }
+
+  async clearVoiceLogs(): Promise<void> {
+    await this.db.runAsync(`DELETE FROM voice_log;`);
+  }
+
+  async getVoiceLogCount(): Promise<number> {
+    const row = await this.db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM voice_log;`
+    );
+    return row?.count ?? 0;
+  }
+
+  async getSuggestedKeywordsFromVoiceLogs(): Promise<{ word: string; categoryId: string; count: number }[]> {
+    const logs = await this.db.getAllAsync<VoiceLogEntry>(
+      `SELECT * FROM voice_log WHERE corrected = 1 AND final_saved_json IS NOT NULL;`
+    );
+    const existingKeywords = new Set(
+      (await this.db.getAllAsync<{ word: string }>(`SELECT word FROM keyword_map;`)).map((k) => k.word.toLowerCase())
+    );
+
+    const suggestionMap = new Map<string, { categoryId: string; count: number }>();
+
+    for (const log of logs) {
+      try {
+        if (!log.final_saved_json) continue;
+        const saved = JSON.parse(log.final_saved_json);
+        const catId = saved.categoryId || saved.category_id;
+        if (!catId) continue;
+
+        const tokens = log.raw_transcript
+          .toLowerCase()
+          .replace(/[^\w\s]/g, '')
+          .split(/\s+/)
+          .filter((t) => t.length >= 3);
+
+        for (const token of tokens) {
+          if (
+            !existingKeywords.has(token) &&
+            !['paid', 'spent', 'rupees', 'rupaye', 'today', 'yesterday', 'chai'].includes(token)
+          ) {
+            const key = `${token}:${catId}`;
+            const existing = suggestionMap.get(key) || { categoryId: catId, count: 0 };
+            existing.count += 1;
+            suggestionMap.set(key, existing);
+          }
+        }
+      } catch {
+        // ignore malformed
+      }
+    }
+
+    const suggestions: { word: string; categoryId: string; count: number }[] = [];
+    for (const [key, val] of suggestionMap.entries()) {
+      const [word] = key.split(':');
+      suggestions.push({ word, categoryId: val.categoryId, count: val.count });
+    }
+    return suggestions.sort((a, b) => b.count - a.count).slice(0, 5);
   }
 
   // --- Backup & Restore ---

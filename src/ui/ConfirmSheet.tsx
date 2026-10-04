@@ -39,6 +39,7 @@ interface ConfirmSheetProps {
     source: 'voice' | 'typed';
     rawText: string;
     learnedWord?: string;
+    corrected?: boolean;
   }) => Promise<void>;
   onEdit: (data: {
     type: TransactionType;
@@ -112,7 +113,12 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
 
       // If category was unknown or user changed category, determine word to learn
       let learnedWord: string | undefined = undefined;
-      if (!originalCategoryName || originalCategoryName !== selectedCategory?.name) {
+      const isCorrected = Boolean(
+        !originalCategoryName ||
+          originalCategoryName.toLowerCase() !== selectedCategory?.name?.toLowerCase()
+      );
+
+      if (isCorrected) {
         // Use the note or matched keyword as learned word
         learnedWord = (parsed.matchedKeyword || parsed.note || '').trim().toLowerCase();
       }
@@ -126,6 +132,7 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
         source,
         rawText: rawTranscript,
         learnedWord,
+        corrected: isCorrected,
       });
 
       onClose();

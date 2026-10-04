@@ -17,6 +17,8 @@ import {
   CreateTransactionInput,
   UpdateTransactionInput,
   KeywordMapEntry,
+  VoiceLogEntry,
+  CreateVoiceLogInput,
 } from '../domain/types';
 import { getRepository, initDatabase } from '../db';
 import {
@@ -49,9 +51,19 @@ interface AppState {
   changeVsLastMonthPercent: number | null;
   todayTotals: PeriodTotals;
   lastDeletedTransaction: Transaction | null;
+  keepVoiceLog: boolean;
+  preferOnDevice: boolean;
+  voiceEngine: string;
 
   init: () => Promise<void>;
   refresh: () => Promise<void>;
+  toggleKeepVoiceLog: (val: boolean) => Promise<void>;
+  togglePreferOnDevice: (val: boolean) => Promise<void>;
+  setVoiceEngine: (engine: string) => Promise<void>;
+  addVoiceLog: (input: CreateVoiceLogInput) => Promise<VoiceLogEntry | null>;
+  updateVoiceLogSaved: (id: string, finalSavedJson: string, corrected: boolean) => Promise<void>;
+  clearVoiceLogs: () => Promise<void>;
+  getVoiceLogs: (limit?: number) => Promise<VoiceLogEntry[]>;
   getInsightsData: (period: 'week' | 'month') => Promise<InsightsData>;
   addTransaction: (input: CreateTransactionInput) => Promise<Transaction>;
   updateTransaction: (id: string, updates: UpdateTransactionInput) => Promise<Transaction>;
@@ -112,6 +124,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   changeVsLastMonthPercent: null,
   todayTotals: emptyTotals,
   lastDeletedTransaction: null,
+  keepVoiceLog: true,
+  preferOnDevice: true,
+  voiceEngine: 'expo',
 
   init: async () => {
     try {
@@ -164,11 +179,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       const endOfMonth = getEndOfMonth(today);
       const prevMonthRange = getPreviousMonthRange(today);
 
-      const [currentMonthTotals, todayTotals, previousMonthTotals] = await Promise.all([
+      const [
+        currentMonthTotals,
+        todayTotals,
+        previousMonthTotals,
+        keepVoiceLogSetting,
+        preferOnDeviceSetting,
+        voiceEngineSetting,
+      ] = await Promise.all([
         repo.getTotalsByPeriod(startOfMonth, endOfMonth),
         repo.getTotalsByPeriod(today, today),
         repo.getTotalsByPeriod(prevMonthRange.startDate, prevMonthRange.endDate),
+        repo.getSetting('keep_voice_log'),
+        repo.getSetting('prefer_on_device'),
+        repo.getSetting('voice_engine'),
       ]);
+
+      const keepVoiceLog = keepVoiceLogSetting !== '0';
+      const preferOnDevice = preferOnDeviceSetting !== '0';
+      const voiceEngine = voiceEngineSetting || 'expo';
 
       let changeVsLastMonthPercent: number | null = null;
       if (previousMonthTotals.totalExpensePaise > 0) {
@@ -187,6 +216,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         previousMonthTotals,
         changeVsLastMonthPercent,
         todayTotals,
+        keepVoiceLog,
+        preferOnDevice,
+        voiceEngine,
         error: null,
       });
     } catch (err: any) {
@@ -361,6 +393,46 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearBanner: () => {
     if (bannerTimeout) clearTimeout(bannerTimeout);
     set({ bannerMessage: null });
+  },
+
+  toggleKeepVoiceLog: async (val: boolean) => {
+    const repo = getRepository();
+    await repo.setSetting('keep_voice_log', val ? '1' : '0');
+    set({ keepVoiceLog: val });
+  },
+
+  togglePreferOnDevice: async (val: boolean) => {
+    const repo = getRepository();
+    await repo.setSetting('prefer_on_device', val ? '1' : '0');
+    set({ preferOnDevice: val });
+  },
+
+  setVoiceEngine: async (engine: string) => {
+    const repo = getRepository();
+    await repo.setSetting('voice_engine', engine);
+    set({ voiceEngine: engine });
+  },
+
+  addVoiceLog: async (input: CreateVoiceLogInput) => {
+    if (!get().keepVoiceLog) return null;
+    const repo = getRepository();
+    return repo.addVoiceLog(input);
+  },
+
+  updateVoiceLogSaved: async (id: string, finalSavedJson: string, corrected: boolean) => {
+    if (!get().keepVoiceLog) return;
+    const repo = getRepository();
+    await repo.updateVoiceLogSaved(id, finalSavedJson, corrected);
+  },
+
+  clearVoiceLogs: async () => {
+    const repo = getRepository();
+    await repo.clearVoiceLogs();
+  },
+
+  getVoiceLogs: async (limit = 100) => {
+    const repo = getRepository();
+    return repo.getVoiceLogs(limit);
   },
 
   clearError: () => set({ error: null }),

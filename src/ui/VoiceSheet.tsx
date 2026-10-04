@@ -32,7 +32,11 @@ interface VoiceSheetProps {
   visible: boolean;
   initialMode?: 'voice' | 'typed';
   onClose: () => void;
-  onTranscriptReady: (transcript: string, source: 'voice' | 'typed') => void;
+  onTranscriptReady: (
+    transcript: string,
+    source: 'voice' | 'typed',
+    details?: { alternatives?: string[]; latencyMs?: number; engine?: string }
+  ) => void;
   speechService?: SpeechService;
 }
 
@@ -54,6 +58,7 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
 
   useEffect(() => {
     let isCancelled = false;
+    const startTime = Date.now();
     if (!isTypingMode) {
       service
         .startListening({
@@ -63,10 +68,15 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
           onPartialTranscript: (text) => {
             if (!isCancelled) setPartialTranscript(text);
           },
-          onFinalTranscript: (text) => {
+          onFinalTranscript: (text, details) => {
             if (!isCancelled) {
               setSpeechState('idle');
-              onTranscriptReady(text, 'voice');
+              const latencyMs = details?.latencyMs ?? (Date.now() - startTime);
+              onTranscriptReady(text, 'voice', {
+                alternatives: details?.alternatives || [text],
+                latencyMs,
+                engine: details?.engine || service.engineName || 'expo',
+              });
             }
           },
           onError: (friendlyMsg) => {

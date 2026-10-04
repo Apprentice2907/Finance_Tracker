@@ -90,6 +90,10 @@ function HomeContent() {
     lastDeletedTransaction,
     bannerMessage,
     showBanner,
+    keepVoiceLog,
+    voiceEngine,
+    addVoiceLog,
+    updateVoiceLogSaved,
   } = useAppStore();
 
   const [hideBalances, setHideBalances] = useState(false);
@@ -105,6 +109,7 @@ function HomeContent() {
   const [parsedResult, setParsedResult] = useState<ParseResult | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [transcriptSource, setTranscriptSource] = useState<'voice' | 'typed'>('voice');
+  const [activeVoiceLogId, setActiveVoiceLogId] = useState<string | null>(null);
 
   // Reanimated values for card transitions
   const cardScale = useSharedValue(1);
@@ -197,12 +202,35 @@ function HomeContent() {
     await deleteTransaction(id);
   };
 
-  const handleTranscriptReady = (transcript: string, source: 'voice' | 'typed') => {
+  const handleTranscriptReady = async (
+    transcript: string,
+    source: 'voice' | 'typed',
+    details?: { alternatives?: string[]; latencyMs?: number; engine?: string }
+  ) => {
     setVoiceSheetVisible(false);
     setCurrentTranscript(transcript);
     setTranscriptSource(source);
 
     const parsed = parseUtterance(transcript, new Date(), 'Asia/Kolkata', keywordMap);
+
+    let logId: string | null = null;
+    if (source === 'voice' && keepVoiceLog) {
+      try {
+        const entry = await addVoiceLog({
+          engine: details?.engine || voiceEngine || 'expo',
+          raw_transcript: transcript,
+          alternatives_json: JSON.stringify(details?.alternatives || [transcript]),
+          parsed_json: JSON.stringify(parsed),
+          final_saved_json: null,
+          corrected: false,
+          latency_ms: details?.latencyMs || 0,
+        });
+        logId = entry?.id || null;
+      } catch (err) {
+        console.error('Failed to log voice utterance:', err);
+      }
+    }
+    setActiveVoiceLogId(logId);
 
     // If confidence is low or amount could not be parsed, route directly to edit form pre-filled
     if (parsed.confidence < 0.6 || !parsed.amountPaise) {
@@ -242,6 +270,7 @@ function HomeContent() {
     source: 'voice' | 'typed';
     rawText: string;
     learnedWord?: string;
+    corrected?: boolean;
   }) => {
     await addTransaction({
       type: data.type,
@@ -257,6 +286,18 @@ function HomeContent() {
       await learnKeyword(data.learnedWord, data.categoryId);
     }
 
+    if (activeVoiceLogId) {
+      const finalJson = JSON.stringify({
+        type: data.type,
+        amountPaise: data.amountPaise,
+        categoryId: data.categoryId,
+        note: data.note,
+        occurredOn: data.occurredOn,
+      });
+      await updateVoiceLogSaved(activeVoiceLogId, finalJson, Boolean(data.corrected));
+      setActiveVoiceLogId(null);
+    }
+
     const cat = categories.find((c) => c.id === data.categoryId);
     const catName = cat?.name || 'General';
     showBanner(`Added ${formatRupees(data.amountPaise)} for ${catName}.`);
@@ -269,6 +310,18 @@ function HomeContent() {
     note: string;
     occurredOn: string;
   }) => {
+    if (activeVoiceLogId) {
+      const finalJson = JSON.stringify({
+        type: data.type,
+        amountPaise: data.amountPaise,
+        categoryId: data.categoryId,
+        note: data.note,
+        occurredOn: data.occurredOn,
+      });
+      await updateVoiceLogSaved(activeVoiceLogId, finalJson, true);
+      setActiveVoiceLogId(null);
+    }
+
     if (editingTransaction && editingTransaction.id) {
       await updateTransaction(editingTransaction.id, {
         type: data.type,

@@ -12,14 +12,22 @@
 
 export type SpeechState = 'idle' | 'listening' | 'processing' | 'error';
 
+export interface TranscriptDetails {
+  alternatives?: string[];
+  latencyMs?: number;
+  engine?: string;
+  confidence?: number;
+}
+
 export interface SpeechServiceCallbacks {
   onStateChange?: (state: SpeechState) => void;
   onPartialTranscript?: (transcript: string) => void;
-  onFinalTranscript?: (transcript: string) => void;
+  onFinalTranscript?: (transcript: string, details?: TranscriptDetails) => void;
   onError?: (friendlyMessage: string, errorCode: string) => void;
 }
 
 export interface SpeechService {
+  readonly engineName?: string;
   isAvailable(): Promise<boolean>;
   hasPermissions(): Promise<boolean>;
   requestPermissions(): Promise<boolean>;
