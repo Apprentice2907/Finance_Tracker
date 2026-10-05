@@ -63,7 +63,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
+    "test": "jest --runInBand",
     "prebuild-check": "node ./scripts/prebuild-check.js"
   },
   "private": true

@@ -54,6 +54,7 @@ This document records key technical decisions, assumptions, and deviations from 
 - **Cross-Platform SQLite Test Adapter**: To bypass C++ ABI compatibility issues with `better-sqlite3` under Node 22 on Windows, the test suite uses `sql.js` (WebAssembly SQLite) which mirrors SQLite behavior with zero native compilation dependencies.
 - **Custom SVG Charts**: Built using `react-native-svg` for minimal footprint and maximum control over aesthetics.
 - **Haptics & Animations**: `expo-haptics` and `react-native-reanimated` for smooth micro-interactions.
+
 ## 5. Backup, Builds & Release
 - **Single-File JSON Backup**: Backups are self-contained JSON files named `wini-backup-YYYY-MM-DD.json`. Every backup file contains an explicit envelope (`app: 'wini'`, `schemaVersion: 1`, `exported_at`), transaction records, categories, and learned keywords.
 - **Strict Schema Validation**: To prevent database corruption or malicious file injection, `validateBackupSchema` rigorously validates that all IDs are strings, timestamps are ISO-8601 formatted, and amounts are non-negative integers representing paise. Corrupted or invalid payloads are rejected with clear error messages before touching SQLite.
@@ -84,3 +85,12 @@ This document records key technical decisions, assumptions, and deviations from 
        - Would add an extra third-party native dependency requiring additional build maintenance and potential New Architecture peer-dependency frictions.
     3. **Option (c) `expo-audio` (rejected)**:
        - `expo-audio` records compressed formats (AAC/M4A) via `MediaRecorder` by default on Android, which `whisper.rn` cannot decode without external transcoders.
+
+## 7. Account Handling for Pre-v2 Transactions (NULL account_id) & Default Account
+- **Only Default Account Seeded is 'Cash'**:
+  - In v2, only one default account (`acc_cash`, 'Cash') is seeded during fresh database setup and migrations. Banks (such as 'HDFC Bank') are never automatically created. When users only have Cash, a non-blocking prompt on the Accounts tab invites them to add their bank and investment accounts.
+- **Legacy Transactions with NULL `account_id`**:
+  - Transactions created prior to v2 do not have an `account_id` (`account_id IS NULL`).
+  - **Decision**: For all balance calculations and passbook ledger displays, any transaction where `account_id IS NULL` is counted toward the default account (`Cash` / `acc_cash`).
+  - **Rationale**: If unassigned transactions were excluded, historical balances, cashflows, and passbook registers would undercount all legacy expenses and income, corrupting user net worth. Attributing them to Cash preserves 100% data integrity without requiring destructive database updates.
+  - **Migration Utility**: A repository method `assignUnassignedTransactions(accountId)` allows users to bulk-assign all legacy unassigned entries to an account of their choice in a single safe SQL transaction.

@@ -101,6 +101,12 @@ export default function RootLayout() {
               href: null,
             }}
           />
+          <Tabs.Screen
+            name="accounts"
+            options={{
+              href: null,
+            }}
+          />
         </Tabs>
       </View>
     </ErrorBoundary>

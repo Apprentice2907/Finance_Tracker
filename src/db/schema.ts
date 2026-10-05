@@ -7,7 +7,7 @@
  * A "schema" is the structure of tables, columns, and rules (like CHECK constraints).
  */
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export const CREATE_CATEGORIES_TABLE = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -173,18 +173,6 @@ export const DEFAULT_ACCOUNTS = [
     include_in_total: 1,
     sort_order: 1,
     aliases_json: JSON.stringify(['cash', 'nakad', 'pocket cash']),
-  },
-  {
-    id: 'acc_hdfc',
-    name: 'HDFC Bank',
-    type: 'bank' as const,
-    institution: 'HDFC',
-    opening_balance_paise: 0,
-    current_value_paise: null,
-    valuation_updated_at: null,
-    include_in_total: 1,
-    sort_order: 2,
-    aliases_json: JSON.stringify(['hdfc', 'hdfc bank']),
   },
 ];
 

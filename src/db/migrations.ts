@@ -11,7 +11,6 @@
 
 import { DatabaseAdapter } from './adapter';
 import {
-  CURRENT_SCHEMA_VERSION,
   CREATE_CATEGORIES_TABLE,
   CREATE_TRANSACTIONS_TABLE,
   CREATE_TRANSACTIONS_INDEXES,
@@ -185,8 +184,34 @@ export async function migrateDatabase(db: DatabaseAdapter): Promise<void> {
         await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?);`, [key, value]);
       }
 
-      // Step 9: Finalize version and commit
-      await db.execAsync(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION};`);
+      // Step 9: Finalize v3 version and commit
+      await db.execAsync(`PRAGMA user_version = 3;`);
+      await db.execAsync('COMMIT;');
+    } catch (error) {
+      await db.execAsync('ROLLBACK;');
+      throw error;
+    }
+  }
+
+  if (currentVersion < 4) {
+    // Migration v4: Clean up snapshot tables and ensure only Cash is default seeded account
+    await db.execAsync('BEGIN TRANSACTION;');
+    try {
+      // Step 1: Drop temporary migration snapshot tables
+      await db.execAsync(`
+        DROP TABLE IF EXISTS _v2_migration_snapshot_categories;
+        DROP TABLE IF EXISTS _v2_migration_snapshot_transactions;
+        DROP TABLE IF EXISTS _v2_migration_snapshot_settings;
+      `);
+
+      // Step 2: Remove unreferenced HDFC Bank if it was seeded previously
+      await db.runAsync(`
+        DELETE FROM accounts
+        WHERE id = 'acc_hdfc'
+          AND NOT EXISTS (SELECT 1 FROM transactions WHERE account_id = 'acc_hdfc');
+      `);
+
+      await db.execAsync(`PRAGMA user_version = 4;`);
       await db.execAsync('COMMIT;');
     } catch (error) {
       await db.execAsync('ROLLBACK;');

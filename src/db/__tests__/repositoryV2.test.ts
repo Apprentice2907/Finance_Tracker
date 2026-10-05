@@ -131,7 +131,12 @@ describe('Repository V2 Integration Tests', () => {
 
     test('calculates total net worth and breaks down by type, respecting include_in_total', async () => {
       const cash = (await repo.getAccountByAlias('cash'))!;
-      const hdfc = (await repo.getAccountByAlias('hdfc'))!;
+      const hdfc = await repo.createAccount({
+        name: 'HDFC Bank',
+        type: 'bank',
+        opening_balance_paise: 0,
+        aliases: ['hdfc'],
+      });
       const incomeCat = (await repo.getCategoryByName('Income'))!;
 
       await repo.addTransaction({
@@ -172,6 +177,13 @@ describe('Repository V2 Integration Tests', () => {
     });
 
     test('resolves accounts by spoken name, aliases, and voice phrases', async () => {
+      const hdfcCreated = await repo.createAccount({
+        name: 'HDFC Bank',
+        type: 'bank',
+        opening_balance_paise: 0,
+        aliases: ['hdfc', 'hdfc bank'],
+      });
+
       const cash = await repo.getAccountByAlias('cash');
       expect(cash?.id).toBe('acc_cash');
 
@@ -179,7 +191,7 @@ describe('Repository V2 Integration Tests', () => {
       expect(nakad?.id).toBe('acc_cash');
 
       const hdfc = await repo.getAccountByAlias('paid 1250 from hdfc electricity');
-      expect(hdfc?.id).toBe('acc_hdfc');
+      expect(hdfc?.id).toBe(hdfcCreated.id);
 
       const nonExistent = await repo.getAccountByAlias('swiss bank');
       expect(nonExistent).toBeNull();
@@ -291,9 +303,9 @@ describe('Repository V2 Integration Tests', () => {
     test('stores and updates bank account records in vault', async () => {
       const bank = await repo.createVaultBank({
         bank_name: 'HDFC Bank',
-        account_holder_name_encrypted: 'enc_holder_1',
-        account_number_encrypted: 'enc_acc_123',
-        ifsc_encrypted: 'enc_ifsc_456',
+        account_holder_name_encrypted: 'enc:v1:holder_1',
+        account_number_encrypted: 'enc:v1:acc_123',
+        ifsc_encrypted: 'enc:v1:ifsc_456',
         branch: 'Indiranagar',
       });
 
@@ -319,8 +331,8 @@ describe('Repository V2 Integration Tests', () => {
       const card = await repo.createVaultCard({
         nickname: 'Amazon Pay ICICI',
         network: 'visa',
-        card_number_encrypted: 'enc_card_9999',
-        holder_name_encrypted: 'enc_holder_2',
+        card_number_encrypted: 'enc:v1:card_9999',
+        holder_name_encrypted: 'enc:v1:holder_2',
         billing_day: 15,
       });
 

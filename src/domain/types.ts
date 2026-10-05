@@ -221,6 +221,16 @@ export interface UpdateAccountInput {
   aliases?: string[];
 }
 
+export interface PassbookEntry {
+  id: string;
+  transaction: TransactionWithCategory;
+  date: string;
+  particulars: string;
+  debitPaise: number | null;
+  creditPaise: number | null;
+  runningBalancePaise: number;
+}
+
 // --- Vault (Wini v2) ---
 
 export interface VaultBank {

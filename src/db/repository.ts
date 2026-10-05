@@ -31,6 +31,7 @@ import {
   PeriodReport,
   ReportPeriodType,
   QuarterBasis,
+  PassbookEntry,
 } from '../domain/types';
 import { generateId } from '../domain/id';
 import {
@@ -1059,19 +1060,121 @@ export class Repository {
       return account.current_value_paise ?? account.opening_balance_paise;
     }
 
-    // Rule: For bank, cash, wallet: opening_balance + Σ income − Σ expense of non-deleted transactions linked to account
+    // Rule in DECISIONS.md section 7:
+    // For balance calculations, a NULL account_id counts toward the default account (Cash).
+    const defaultAccountId = await this.getSetting('default_account_id', 'acc_cash');
+    const isDefault = accountId === defaultAccountId || account.id === 'acc_cash';
+
+    const whereClause = isDefault
+      ? `(account_id = ? OR account_id IS NULL) AND deleted_at IS NULL`
+      : `account_id = ? AND deleted_at IS NULL`;
+
     const row = await this.db.getFirstAsync<{ income: number; expense: number }>(
       `SELECT
         COALESCE(SUM(CASE WHEN type = 'income' THEN amount_paise ELSE 0 END), 0) as income,
         COALESCE(SUM(CASE WHEN type = 'expense' THEN amount_paise ELSE 0 END), 0) as expense
        FROM transactions
-       WHERE account_id = ? AND deleted_at IS NULL;`,
+       WHERE ${whereClause};`,
       [accountId]
     );
 
     const income = row?.income ?? 0;
     const expense = row?.expense ?? 0;
     return account.opening_balance_paise + income - expense;
+  }
+
+  /**
+   * Bulk assigns all legacy transactions with a NULL account_id to the specified account.
+   */
+  async assignUnassignedTransactions(accountId: string): Promise<number> {
+    const target = await this.getAccountById(accountId);
+    if (!target) throw new Error(`Target account ${accountId} not found`);
+
+    const now = new Date().toISOString();
+    const result = await this.db.runAsync(
+      `UPDATE transactions SET account_id = ?, updated_at = ? WHERE account_id IS NULL AND deleted_at IS NULL;`,
+      [accountId, now]
+    );
+    return result.changes ?? 0;
+  }
+
+  /**
+   * Computes passbook ledger entries ordered by occurred_on ASC, created_at ASC with running balance.
+   * NULL account_id transactions count toward the default account (Cash).
+   */
+  async getAccountPassbook(accountId: string): Promise<PassbookEntry[]> {
+    const account = await this.getAccountById(accountId);
+    if (!account) throw new Error(`Account ${accountId} not found`);
+
+    const defaultAccountId = await this.getSetting('default_account_id', 'acc_cash');
+    const isDefault = accountId === defaultAccountId || account.id === 'acc_cash';
+
+    const whereClause = isDefault
+      ? `(t.account_id = ? OR t.account_id IS NULL) AND t.deleted_at IS NULL`
+      : `t.account_id = ? AND t.deleted_at IS NULL`;
+
+    const sql = `
+      SELECT
+        t.*,
+        c.name as category_name,
+        c.emoji as category_emoji,
+        c.color as category_color,
+        a.name as account_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      LEFT JOIN accounts a ON t.account_id = a.id
+      WHERE ${whereClause}
+      ORDER BY t.occurred_on ASC, t.created_at ASC;
+    `;
+
+    const rows = await this.db.getAllAsync<any>(sql, [accountId]);
+
+    let runningBalance = account.opening_balance_paise;
+    const entries: PassbookEntry[] = [];
+
+    for (const r of rows) {
+      const isIncome = r.type === 'income';
+      const debitPaise = isIncome ? null : r.amount_paise;
+      const creditPaise = isIncome ? r.amount_paise : null;
+
+      if (isIncome) {
+        runningBalance += r.amount_paise;
+      } else {
+        runningBalance -= r.amount_paise;
+      }
+
+      const tx: TransactionWithCategory = {
+        id: r.id,
+        type: r.type,
+        amount_paise: r.amount_paise,
+        category_id: r.category_id,
+        account_id: r.account_id ?? null,
+        account_name: r.account_name ?? null,
+        note: r.note,
+        occurred_on: r.occurred_on,
+        source: r.source,
+        raw_text: r.raw_text,
+        device_id: r.device_id,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        deleted_at: r.deleted_at,
+        category_name: r.category_name,
+        category_emoji: r.category_emoji,
+        category_color: r.category_color,
+      };
+
+      entries.push({
+        id: r.id,
+        transaction: tx,
+        date: r.occurred_on,
+        particulars: r.note || r.category_name || 'Transaction',
+        debitPaise,
+        creditPaise,
+        runningBalancePaise: runningBalance,
+      });
+    }
+
+    return entries;
   }
 
   async getAccountWithBalance(accountId: string): Promise<AccountWithBalance | null> {
@@ -1229,7 +1332,26 @@ export class Repository {
 
   // --- Vault (Bank & Cards) ---
 
+  private assertEncryptedBlob(value: string | null | undefined, fieldName: string, isRequired = false): void {
+    if (value === null || value === undefined) {
+      if (isRequired) {
+        throw new Error(`Vault field "${fieldName}" is required and must be an encrypted blob starting with "enc:v1:"`);
+      }
+      return;
+    }
+    if (typeof value !== 'string' || !value.startsWith('enc:v1:')) {
+      throw new Error(`Vault field "${fieldName}" must be an encrypted blob starting with "enc:v1:"`);
+    }
+  }
+
   async createVaultBank(input: CreateVaultBankInput): Promise<VaultBank> {
+    this.assertEncryptedBlob(input.account_holder_name_encrypted, 'account_holder_name');
+    this.assertEncryptedBlob(input.account_number_encrypted, 'account_number');
+    this.assertEncryptedBlob(input.ifsc_encrypted, 'ifsc');
+    this.assertEncryptedBlob(input.customer_id_encrypted, 'customer_id');
+    this.assertEncryptedBlob(input.upi_id_encrypted, 'upi_id');
+    this.assertEncryptedBlob(input.notes_encrypted, 'notes');
+
     const id = input.id || generateId();
     const now = new Date().toISOString();
     await this.db.runAsync(
@@ -1284,6 +1406,26 @@ export class Repository {
   async updateVaultBank(id: string, input: UpdateVaultBankInput): Promise<VaultBank> {
     const existing = await this.getVaultBankById(id);
     if (!existing) throw new Error(`Vault bank record ${id} not found`);
+
+    if (input.account_holder_name_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.account_holder_name_encrypted, 'account_holder_name');
+    }
+    if (input.account_number_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.account_number_encrypted, 'account_number');
+    }
+    if (input.ifsc_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.ifsc_encrypted, 'ifsc');
+    }
+    if (input.customer_id_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.customer_id_encrypted, 'customer_id');
+    }
+    if (input.upi_id_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.upi_id_encrypted, 'upi_id');
+    }
+    if (input.notes_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.notes_encrypted, 'notes');
+    }
+
     const now = new Date().toISOString();
     const updated: VaultBank = {
       ...existing,
@@ -1341,6 +1483,12 @@ export class Repository {
   }
 
   async createVaultCard(input: CreateVaultCardInput): Promise<VaultCard> {
+    this.assertEncryptedBlob(input.holder_name_encrypted, 'holder_name');
+    this.assertEncryptedBlob(input.card_number_encrypted, 'card_number', true);
+    this.assertEncryptedBlob(input.expiry_encrypted, 'expiry');
+    this.assertEncryptedBlob(input.cvv_encrypted, 'cvv');
+    this.assertEncryptedBlob(input.pin_encrypted, 'pin');
+
     const id = input.id || generateId();
     const now = new Date().toISOString();
     await this.db.runAsync(
@@ -1398,6 +1546,23 @@ export class Repository {
   async updateVaultCard(id: string, input: UpdateVaultCardInput): Promise<VaultCard> {
     const existing = await this.getVaultCardById(id);
     if (!existing) throw new Error(`Vault card record ${id} not found`);
+
+    if (input.holder_name_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.holder_name_encrypted, 'holder_name');
+    }
+    if (input.card_number_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.card_number_encrypted, 'card_number', true);
+    }
+    if (input.expiry_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.expiry_encrypted, 'expiry');
+    }
+    if (input.cvv_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.cvv_encrypted, 'cvv');
+    }
+    if (input.pin_encrypted !== undefined) {
+      this.assertEncryptedBlob(input.pin_encrypted, 'pin');
+    }
+
     const now = new Date().toISOString();
     const updated: VaultCard = {
       ...existing,

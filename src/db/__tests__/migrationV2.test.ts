@@ -135,13 +135,13 @@ describe('Wini v2 Safe Database Migration Tests', () => {
 
     // 4. VERIFY DATABASE VERSION
     const versionRow = await adapter.getFirstAsync<{ user_version: number }>('PRAGMA user_version;');
-    expect(versionRow?.user_version).toBe(3);
+    expect(versionRow?.user_version).toBe(4);
 
-    // 5. VERIFY SNAPSHOT TABLES CREATED
-    const snapshotTxs = await adapter.getAllAsync<any>('SELECT * FROM _v2_migration_snapshot_transactions ORDER BY id ASC;');
-    const snapshotCats = await adapter.getAllAsync<any>('SELECT * FROM _v2_migration_snapshot_categories ORDER BY id ASC;');
-    expect(snapshotTxs.length).toBe(5);
-    expect(snapshotCats.length).toBe(4);
+    // 5. VERIFY SNAPSHOT TABLES DROPPED ON SUCCESS
+    const snapshotTables = await adapter.getAllAsync<any>(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '_v2_migration_snapshot_%';`
+    );
+    expect(snapshotTables.length).toBe(0);
 
     // 6. VERIFY ZERO DATA LOSS ON TRANSACTIONS
     const postTxRows = await adapter.getAllAsync<any>('SELECT * FROM transactions ORDER BY id ASC;');
@@ -176,15 +176,12 @@ describe('Wini v2 Safe Database Migration Tests', () => {
       }
     }
 
-    // 8. VERIFY NEW TABLES CREATED
+    // 8. VERIFY NEW TABLES CREATED & ONLY CASH SEEDED (NEVER SEED BANK)
     const accounts = await adapter.getAllAsync<any>('SELECT * FROM accounts ORDER BY sort_order ASC;');
-    expect(accounts.length).toBe(2);
+    expect(accounts.length).toBe(1);
     expect(accounts[0].id).toBe('acc_cash');
     expect(accounts[0].name).toBe('Cash');
     expect(accounts[0].type).toBe('cash');
-    expect(accounts[1].id).toBe('acc_hdfc');
-    expect(accounts[1].name).toBe('HDFC Bank');
-    expect(accounts[1].type).toBe('bank');
 
     const valuations = await adapter.getAllAsync<any>('SELECT * FROM account_valuations;');
     expect(Array.isArray(valuations)).toBe(true);
@@ -214,7 +211,7 @@ describe('Wini v2 Safe Database Migration Tests', () => {
     // 10. VERIFY IDEMPOTENCY: Re-running migration produces no errors and leaves data intact
     await migrateDatabase(adapter);
     const postReRunVersion = await adapter.getFirstAsync<{ user_version: number }>('PRAGMA user_version;');
-    expect(postReRunVersion?.user_version).toBe(3);
+    expect(postReRunVersion?.user_version).toBe(4);
     const postReRunTxs = await adapter.getAllAsync<any>('SELECT * FROM transactions;');
     expect(postReRunTxs.length).toBe(5);
 
