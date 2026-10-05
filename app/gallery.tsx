@@ -2,13 +2,17 @@
  * Component Gallery (Developer Screen).
  * Where it fits: Reachable from Settings → Developer (`/gallery`).
  *
- * Demonstrates all 13 shared UI kit components in all states:
- * default, pressed, disabled, loading, empty, and error.
+ * Demonstrates all shared UI kit components (D1 + D2) in both Night & Pocket themes,
+ * and all relevant states: default, pressed, disabled, loading, empty, error.
+ *
+ * Theme switcher at the top overrides the global theme only within this screen
+ * so the developer can compare both themes without leaving the gallery.
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Screen,
   Card,
@@ -23,8 +27,17 @@ import {
   Skeleton,
   SegmentedControl,
   IconButton,
+  TexturedCard,
+  CategoryIcon,
+  CategoryTile,
+  TransactionRow,
+  GlassButton,
+  Keypad,
+  FloatingNav,
+  type NavTabKey,
 } from '../src/ui/kit';
-import { colors, spacing, typography, radii } from '../src/ui/tokens';
+import { nightColors, pocketColors, categoryColors, spacing, typography, radii } from '../src/ui/tokens';
+import { useTheme } from '../src/ui/ThemeContext';
 import {
   WalletIcon,
   MicIcon,
@@ -35,257 +48,235 @@ import {
   SettingsIcon,
 } from '../src/ui/icons';
 
-export default function ComponentGalleryScreen() {
-  const router = useRouter();
+// ──────────────────────────────────────────────────────────────
+// Gallery inner component (receives overridden colors)
+// ──────────────────────────────────────────────────────────────
+function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
+  const isDark = localTheme === 'night';
+  const C = isDark ? nightColors : pocketColors;
+
   const [sheetVisible, setSheetVisible] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState('month');
+  const [selectedSegment2, setSelectedSegment2] = useState('expense');
   const [chipSelected, setChipSelected] = useState(true);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [buttonLoading, setButtonLoading] = useState(false);
+  const [keypadValue, setKeypadValue] = useState('');
+  const [activeNavTab, setActiveNavTab] = useState<NavTabKey>('home');
+
+  // ── styles scoped to current localTheme ──────────────────────
+  const dyn = StyleSheet.create({
+    sectionBg: {
+      backgroundColor: C.bg,
+    },
+    sectionTitle: {
+      color: C.text,
+      fontFamily: typography.bodyBold,
+      fontSize: typography.sizeLg,
+      marginBottom: 2,
+    },
+    sectionSub: {
+      color: C.textMuted,
+      fontFamily: typography.body,
+      fontSize: typography.sizeXs,
+    },
+    stateLabel: {
+      color: C.textMuted,
+      fontFamily: typography.bodyMedium,
+      fontSize: typography.sizeXs,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: spacing.xs,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: C.border,
+      marginVertical: spacing.md,
+    },
+    cardTitle: {
+      color: C.text,
+      fontFamily: typography.bodyBold,
+      fontSize: typography.sizeBase,
+      marginBottom: 4,
+    },
+    cardBody: {
+      color: C.textMuted,
+      fontFamily: typography.body,
+      fontSize: typography.sizeSm,
+    },
+    sheetText: {
+      color: C.textSecondary,
+      fontFamily: typography.body,
+      fontSize: typography.sizeBase,
+      lineHeight: typography.lineHeightBase,
+    },
+    keypadValue: {
+      color: C.text,
+      fontFamily: typography.bodyBold,
+      fontSize: typography.sizeXxl,
+      textAlign: 'center',
+      minHeight: 40,
+      marginBottom: spacing.md,
+    },
+    listEmoji: {
+      fontSize: 24,
+    },
+    colorName: {
+      color: C.textMuted,
+      fontFamily: typography.bodyMedium,
+      fontSize: typography.sizeXs,
+    },
+    iconLabel: {
+      color: C.textMuted,
+      fontFamily: typography.body,
+      fontSize: typography.sizeXs,
+    },
+  });
 
   return (
-    <Screen scrollable safeAreaEdges={['top', 'bottom', 'left', 'right']}>
-      {/* Top Header */}
-      <View style={styles.topHeader}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backArrow}>←</Text>
-          <Text style={styles.backText}>Settings</Text>
-        </TouchableOpacity>
-        <Text style={styles.pageTitle}>Component Gallery</Text>
-        <Text style={styles.pageSubtitle}>
-          Design System &amp; UI Kit Tokens Preview (All States)
-        </Text>
-      </View>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: C.bg }}
+      contentContainerStyle={{ paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
+    >
 
-      {/* 1. Tokens: Color Palette */}
-      <SectionHeader title="Design Tokens: Colors" subtitle="Semantic & Core Palettes" />
-      <Card variant="surface" style={styles.galleryCard}>
-        <View style={styles.colorGrid}>
+      {/* ── 1. Colour Palette ───────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>Design Tokens: Colors</Text>
+        <Text style={dyn.sectionSub}>Semantic palette for the active theme</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
           {[
-            { label: 'Primary', val: colors.primary },
-            { label: 'Income', val: colors.income },
-            { label: 'Expense', val: colors.expense },
-            { label: 'Danger', val: colors.danger },
-            { label: 'Warning', val: colors.warning },
-            { label: 'Purple', val: colors.accentPurple },
-            { label: 'Surface', val: colors.surface },
-            { label: 'Elevated', val: colors.elevated },
+            { label: 'Accent', val: C.accent },
+            { label: 'Income', val: C.income },
+            { label: 'Expense', val: C.expense },
+            { label: 'Danger', val: C.danger },
+            { label: 'Warning', val: C.warning },
+            { label: 'Purple', val: C.accentPurple },
+            { label: 'Surface', val: C.surface },
+            { label: 'Surface2', val: C.surface2 },
           ].map((c) => (
-            <View key={c.label} style={styles.colorCell}>
-              <View style={[styles.colorSwatch, { backgroundColor: c.val }]} />
-              <Text style={styles.colorName}>{c.label}</Text>
+            <View key={c.label} style={{ alignItems: 'center', width: 72 }}>
+              <View style={{ width: 44, height: 44, borderRadius: radii.md, marginBottom: 4, borderWidth: 1, borderColor: C.border, backgroundColor: c.val }} />
+              <Text style={dyn.colorName}>{c.label}</Text>
             </View>
           ))}
         </View>
       </Card>
 
-      {/* 2. AmountText */}
-      <SectionHeader
-        title="AmountText"
-        subtitle="Handles Indian currency grouping, income/expense coloring & sizes"
-      />
-      <Card variant="surface" style={styles.galleryCard}>
-        <View style={styles.rowWrap}>
-          <View style={styles.subItem}>
-            <Text style={styles.stateLabel}>Income (+sign)</Text>
+      {/* ── 2. AmountText ────────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>AmountText</Text>
+        <Text style={dyn.sectionSub}>Indian grouping, dimmed decimals, sign, serif in Pocket</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={dyn.stateLabel}>Income</Text>
             <AmountText amountPaise={12500000} type="income" showSign size="xl" />
           </View>
-          <View style={styles.subItem}>
-            <Text style={styles.stateLabel}>Expense (−sign)</Text>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={dyn.stateLabel}>Expense</Text>
             <AmountText amountPaise={45000} type="expense" showSign size="xl" />
           </View>
-          <View style={styles.subItem}>
-            <Text style={styles.stateLabel}>Neutral</Text>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={dyn.stateLabel}>Neutral</Text>
             <AmountText amountPaise={250000} type="neutral" size="xl" />
           </View>
         </View>
-
-        <View style={styles.divider} />
-
-        <Text style={styles.stateLabel}>Hero / Display Typography</Text>
+        <View style={dyn.divider} />
+        <Text style={dyn.stateLabel}>Hero Display</Text>
         <AmountText amountPaise={150000000} type="income" showSign size="hero" />
       </Card>
 
-      {/* 3. Buttons (All States & Variants) */}
-      <SectionHeader
-        title="Button"
-        subtitle="Variants (primary, secondary, ghost, danger) & States"
-      />
-      <Card variant="surface" style={styles.galleryCard}>
-        <Text style={styles.stateLabel}>Variants (Default State)</Text>
-        <View style={styles.buttonStack}>
-          <Button
-            title="Primary Action"
-            variant="primary"
-            onPress={() => {}}
-            icon={<PlusIcon size={16} color={colors.white} />}
-          />
-          <Button
-            title="Secondary Action"
-            variant="secondary"
-            onPress={() => {}}
-            icon={<SettingsIcon size={16} color={colors.text} />}
-          />
-          <Button
-            title="Danger Action"
-            variant="danger"
-            onPress={() => {}}
-            icon={<TrashIcon size={16} color={colors.white} />}
-          />
+      {/* ── 3. Buttons ───────────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>Button</Text>
+        <Text style={dyn.sectionSub}>primary · secondary · ghost · danger · sm/md/lg · loading</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <Text style={dyn.stateLabel}>Variants</Text>
+        <View style={{ gap: spacing.sm }}>
+          <Button title="Primary Action" variant="primary" onPress={() => {}} icon={<PlusIcon size={16} color={C.onAccent} />} />
+          <Button title="Secondary Action" variant="secondary" onPress={() => {}} icon={<SettingsIcon size={16} color={C.text} />} />
+          <Button title="Danger Action" variant="danger" onPress={() => {}} icon={<TrashIcon size={16} color={C.white} />} />
           <Button title="Ghost Action" variant="ghost" onPress={() => {}} />
         </View>
-
-        <View style={styles.divider} />
-
-        <Text style={styles.stateLabel}>States: Disabled &amp; Loading</Text>
-        <View style={styles.buttonStack}>
+        <View style={dyn.divider} />
+        <Text style={dyn.stateLabel}>Disabled & Loading</Text>
+        <View style={{ gap: spacing.sm }}>
+          <Button title="Disabled Primary" variant="primary" disabled onPress={() => {}} />
           <Button
-            title="Disabled Primary"
-            variant="primary"
-            disabled
-            onPress={() => {}}
-          />
-          <Button
-            title={buttonLoading ? 'Loading...' : 'Tap for Loading State'}
+            title={buttonLoading ? 'Loading…' : 'Tap for Loading State'}
             variant="secondary"
             loading={buttonLoading}
-            onPress={() => {
-              setButtonLoading(true);
-              setTimeout(() => setButtonLoading(false), 2000);
-            }}
+            onPress={() => { setButtonLoading(true); setTimeout(() => setButtonLoading(false), 2000); }}
           />
         </View>
-
-        <View style={styles.divider} />
-
-        <Text style={styles.stateLabel}>Sizes: Small, Medium, Large</Text>
-        <View style={styles.buttonRow}>
+        <View style={dyn.divider} />
+        <Text style={dyn.stateLabel}>Sizes</Text>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
           <Button title="Small" size="sm" variant="secondary" onPress={() => {}} />
           <Button title="Medium" size="md" variant="secondary" onPress={() => {}} />
           <Button title="Large" size="lg" variant="primary" onPress={() => {}} />
         </View>
       </Card>
 
-      {/* 4. IconButton */}
-      <SectionHeader
-        title="IconButton"
-        subtitle="Variants & States (default, surface, glass, primary, danger, disabled)"
-      />
-      <Card variant="surface" style={styles.galleryCard}>
-        <View style={styles.iconButtonRow}>
-          <View style={styles.iconCell}>
-            <IconButton
-              icon={<MicIcon size={20} color={colors.white} />}
-              variant="primary"
-              onPress={() => {}}
-            />
-            <Text style={styles.iconLabel}>Primary</Text>
-          </View>
-          <View style={styles.iconCell}>
-            <IconButton
-              icon={<SearchIcon size={20} color={colors.text} />}
-              variant="surface"
-              onPress={() => {}}
-            />
-            <Text style={styles.iconLabel}>Surface</Text>
-          </View>
-          <View style={styles.iconCell}>
-            <IconButton
-              icon={<WalletIcon size={20} color={colors.accentPurple} />}
-              variant="glass"
-              onPress={() => {}}
-            />
-            <Text style={styles.iconLabel}>Glass</Text>
-          </View>
-          <View style={styles.iconCell}>
-            <IconButton
-              icon={<TrashIcon size={20} color={colors.white} />}
-              variant="danger"
-              onPress={() => {}}
-            />
-            <Text style={styles.iconLabel}>Danger</Text>
-          </View>
-          <View style={styles.iconCell}>
-            <IconButton
-              icon={<MicIcon size={20} color={colors.white} />}
-              variant="primary"
-              disabled
-              onPress={() => {}}
-            />
-            <Text style={styles.iconLabel}>Disabled</Text>
-          </View>
+      {/* ── 4. GlassButton ───────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>GlassButton</Text>
+        <Text style={dyn.sectionSub}>Quick-action tiles: icon above label, glass hairline border</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <GlassButton label="Speak" icon={<Ionicons name="mic" size={22} color={C.text} />} onPress={() => {}} />
+          <GlassButton label="Type" icon={<Ionicons name="keypad" size={22} color={C.text} />} onPress={() => {}} />
+          <GlassButton label="Income" icon={<Ionicons name="trending-up" size={22} color={C.income} />} onPress={() => {}} />
+          <GlassButton label="More" icon={<Ionicons name="ellipsis-horizontal" size={22} color={C.textMuted} />} onPress={() => {}} />
         </View>
       </Card>
 
-      {/* 5. Chip */}
-      <SectionHeader
-        title="Chip"
-        subtitle="Selectable tags, emojis, custom category colors, disabled"
-      />
-      <Card variant="surface" style={styles.galleryCard}>
-        <View style={styles.chipWrap}>
-          <Chip
-            label="Selected Chip"
-            emoji="✨"
-            selected={chipSelected}
-            onPress={() => setChipSelected(!chipSelected)}
-          />
-          <Chip
-            label="Unselected"
-            emoji="🍕"
-            selected={false}
-            onPress={() => setChipSelected(true)}
-          />
-          <Chip
-            label="Custom Color"
-            emoji="🚕"
-            color={colors.income}
-            selected={false}
-            onPress={() => {}}
-          />
-          <Chip
-            label="Disabled Chip"
-            emoji="🔒"
-            disabled
-            selected={false}
-          />
-        </View>
-      </Card>
+      {/* ── 5. Cards & TexturedCard ───────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>Card & TexturedCard</Text>
+        <Text style={dyn.sectionSub}>surface · elevated · glass · outlined · 5 textures</Text>
+      </View>
+      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.md }}>
+        <Card variant="surface" style={{ backgroundColor: C.surface, borderColor: C.border }}>
+          <Text style={dyn.cardTitle}>Surface Card</Text>
+          <Text style={dyn.cardBody}>Standard base card with subtle border.</Text>
+        </Card>
+        <Card variant="elevated" style={{ backgroundColor: C.surface2, borderColor: C.border }}>
+          <Text style={dyn.cardTitle}>Elevated Card</Text>
+          <Text style={dyn.cardBody}>Higher contrast, second-level container.</Text>
+        </Card>
+        <Card variant="glass" style={{ backgroundColor: C.glassFill, borderColor: C.glassBorder }}>
+          <Text style={dyn.cardTitle}>Glass Card</Text>
+          <Text style={dyn.cardBody}>Translucent frosted glass styling.</Text>
+        </Card>
+        <Card variant="outlined" onPress={() => {}} style={{ borderColor: C.border }}>
+          <Text style={dyn.cardTitle}>Outlined Clickable (Tap me)</Text>
+          <Text style={dyn.cardBody}>Transparent background with touch opacity.</Text>
+        </Card>
 
-      {/* 6. Card Variants */}
-      <SectionHeader
-        title="Card"
-        subtitle="Variants: surface, elevated, glass, outlined (with onPress)"
-      />
-      <View style={styles.cardVariantStack}>
-        <Card variant="surface">
-          <Text style={styles.cardTitle}>Surface Card</Text>
-          <Text style={styles.cardBody}>Standard base card with subtle border.</Text>
-        </Card>
-        <Card variant="elevated">
-          <Text style={styles.cardTitle}>Elevated Card</Text>
-          <Text style={styles.cardBody}>High-contrast container for focal metrics.</Text>
-        </Card>
-        <Card variant="glass">
-          <Text style={styles.cardTitle}>Glass Card</Text>
-          <Text style={styles.cardBody}>Translucent frosted glass styling.</Text>
-        </Card>
-        <Card variant="outlined" onPress={() => {}}>
-          <Text style={styles.cardTitle}>Outlined Clickable Card (Tap me)</Text>
-          <Text style={styles.cardBody}>Transparent background with tap opacity.</Text>
-        </Card>
+        {/* TexturedCard: all 5 textures */}
+        <Text style={[dyn.stateLabel, { marginTop: spacing.sm }]}>TexturedCard — 5 Textures</Text>
+        {(['aurora', 'nebula', 'cosmos', 'ember', 'midnight'] as const).map((tex) => (
+          <TexturedCard key={tex} texture={tex} style={{ marginBottom: spacing.xs }}>
+            <Text style={{ color: C.white, fontFamily: typography.bodyBold, fontSize: typography.sizeBase }}>{tex.charAt(0).toUpperCase() + tex.slice(1)}</Text>
+            <AmountText amountPaise={100000} type="income" showSign size="xl" />
+          </TexturedCard>
+        ))}
       </View>
 
-      {/* 7. SegmentedControl */}
-      <SectionHeader
-        title="SegmentedControl"
-        subtitle="Multi-option tab bar with active animation & icons"
-      />
-      <Card variant="surface" style={styles.galleryCard}>
+      {/* ── 6. SegmentedControl ──────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>SegmentedControl</Text>
+        <Text style={dyn.sectionSub}>Period selector, type selector</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <Text style={[dyn.stateLabel, { marginBottom: spacing.sm }]}>Period</Text>
         <SegmentedControl
           options={[
             { key: 'week', label: 'Week' },
@@ -296,254 +287,352 @@ export default function ComponentGalleryScreen() {
           selectedKey={selectedSegment}
           onChange={setSelectedSegment}
         />
-      </Card>
-
-      {/* 8. ListRow */}
-      <SectionHeader
-        title="ListRow"
-        subtitle="Standard list item with left icon, title, subtitle, right metric & chevron"
-      />
-      <Card variant="surface" padding="none" style={styles.galleryCard}>
-        <ListRow
-          title="Auto / Rickshaw"
-          subtitle="Transport • Yesterday"
-          left={<Text style={styles.listEmoji}>🛺</Text>}
-          right={<AmountText amountPaise={4000} type="expense" showSign size="md" />}
-          borderBottom
-          showChevron
-          onPress={() => {}}
-        />
-        <ListRow
-          title="Salary Credited"
-          subtitle="Income • Oct 1, 2026"
-          left={<Text style={styles.listEmoji}>💰</Text>}
-          right={<AmountText amountPaise={5000000} type="income" showSign size="md" />}
-          borderBottom
-          showChevron
-          onPress={() => {}}
-        />
-        <ListRow
-          title="Disabled Row"
-          subtitle="Interaction prevented"
-          left={<Text style={styles.listEmoji}>🔒</Text>}
-          disabled
-          showChevron
+        <View style={{ height: spacing.md }} />
+        <Text style={[dyn.stateLabel, { marginBottom: spacing.sm }]}>Type</Text>
+        <SegmentedControl
+          options={[
+            { key: 'expense', label: 'Expense' },
+            { key: 'income', label: 'Income' },
+          ]}
+          selectedKey={selectedSegment2}
+          onChange={setSelectedSegment2}
         />
       </Card>
 
-      {/* 9. Skeleton */}
-      <SectionHeader
-        title="Skeleton"
-        subtitle="Pulsing loading placeholders for network/database queries"
-      />
-      <Card variant="surface" style={styles.galleryCard}>
+      {/* ── 7. IconButton ────────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>IconButton</Text>
+        <Text style={dyn.sectionSub}>primary · surface · glass · danger · disabled</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+          {[
+            { label: 'Primary', el: <IconButton icon={<MicIcon size={20} color={C.white} />} variant="primary" onPress={() => {}} /> },
+            { label: 'Surface', el: <IconButton icon={<SearchIcon size={20} color={C.text} />} variant="surface" onPress={() => {}} /> },
+            { label: 'Glass', el: <IconButton icon={<WalletIcon size={20} color={C.accentPurple} />} variant="glass" onPress={() => {}} /> },
+            { label: 'Danger', el: <IconButton icon={<TrashIcon size={20} color={C.white} />} variant="danger" onPress={() => {}} /> },
+            { label: 'Disabled', el: <IconButton icon={<MicIcon size={20} color={C.white} />} variant="primary" disabled onPress={() => {}} /> },
+          ].map(({ label, el }) => (
+            <View key={label} style={{ alignItems: 'center', gap: spacing.xs }}>
+              {el}
+              <Text style={dyn.iconLabel}>{label}</Text>
+            </View>
+          ))}
+        </View>
+      </Card>
+
+      {/* ── 8. CategoryIcon ──────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>CategoryIcon</Text>
+        <Text style={dyn.sectionSub}>Squircle: Night=filled+dark glyph · Pocket=14% tint+colored glyph</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+          {[
+            { name: 'food', color: categoryColors.orange },
+            { name: 'transport', color: categoryColors.blue },
+            { name: 'shopping', color: categoryColors.violet },
+            { name: 'bills', color: categoryColors.cyan },
+            { name: 'health', color: categoryColors.coral },
+            { name: 'fun', color: categoryColors.mint },
+            { name: 'education', color: categoryColors.yellow },
+            { name: 'salary', color: categoryColors.lime },
+            { name: 'income', color: categoryColors.teal },
+            { name: 'other', color: categoryColors.grey },
+          ].map(({ name, color }) => (
+            <View key={name} style={{ alignItems: 'center', gap: 4 }}>
+              <CategoryIcon name={name} color={color} size="md" />
+              <Text style={[dyn.colorName, { width: 52, textAlign: 'center' }]}>{name}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={dyn.divider} />
+        <Text style={dyn.stateLabel}>Sizes: sm · md · lg</Text>
+        <View style={{ flexDirection: 'row', gap: spacing.lg, alignItems: 'flex-end' }}>
+          <CategoryIcon name="food" color={categoryColors.orange} size="sm" />
+          <CategoryIcon name="food" color={categoryColors.orange} size="md" />
+          <CategoryIcon name="food" color={categoryColors.orange} size="lg" />
+        </View>
+      </Card>
+
+      {/* ── 9. CategoryTile ──────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>CategoryTile</Text>
+        <Text style={dyn.sectionSub}>2-column grid tile — icon, name, amount, badge</Text>
+      </View>
+      <View style={{ paddingHorizontal: spacing.lg, flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+        <CategoryTile
+          name="Food"
+          iconName="food"
+          color={categoryColors.orange}
+          amountPaise={358000}
+          count={12}
+          percentage={34}
+          style={{ flex: 1 }}
+        />
+        <CategoryTile
+          name="Transport"
+          iconName="transport"
+          color={categoryColors.blue}
+          amountPaise={124000}
+          count={8}
+          percentage={12}
+          style={{ flex: 1 }}
+        />
+      </View>
+      <View style={{ paddingHorizontal: spacing.lg, flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+        <CategoryTile
+          name="Shopping"
+          iconName="shopping"
+          color={categoryColors.violet}
+          amountPaise={287000}
+          count={5}
+          style={{ flex: 1 }}
+        />
+        <CategoryTile
+          name="Bills"
+          iconName="bills"
+          color={categoryColors.cyan}
+          amountPaise={195000}
+          count={3}
+          style={{ flex: 1 }}
+        />
+      </View>
+
+      {/* ── 10. TransactionRow ───────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>TransactionRow</Text>
+        <Text style={dyn.sectionSub}>Squircle icon · title · subtitle · amount · date</Text>
+      </View>
+      <Card variant="surface" padding="none" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        {[
+          { title: 'Dominos Pizza', subtitle: 'Food • HDFC Bank', amount: 87900, type: 'expense' as const, color: categoryColors.orange, cat: 'food', date: 'Today, 1:30 PM' },
+          { title: 'Salary Credited', subtitle: 'Income • Savings Account', amount: 8500000, type: 'income' as const, color: categoryColors.teal, cat: 'salary', date: 'Oct 1, 2026' },
+          { title: 'Metro Card Recharge', subtitle: 'Transport • Cash', amount: 50000, type: 'expense' as const, color: categoryColors.blue, cat: 'transport', date: 'Yesterday' },
+          { title: 'Freelance Payment', subtitle: 'Income • UPI', amount: 1500000, type: 'income' as const, color: categoryColors.lime, cat: 'income', date: 'Oct 3' },
+        ].map((row, i) => (
+          <View key={i} style={i < 3 ? { borderBottomWidth: 1, borderBottomColor: C.border, paddingHorizontal: spacing.lg } : { paddingHorizontal: spacing.lg }}>
+            <TransactionRow
+              title={row.title}
+              subtitle={row.subtitle}
+              amountPaise={row.amount}
+              type={row.type}
+              categoryColor={row.color}
+              categoryName={row.cat}
+              dateStr={row.date}
+              onPress={() => {}}
+            />
+          </View>
+        ))}
+      </Card>
+
+      {/* ── 11. Chip ─────────────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>Chip</Text>
+        <Text style={dyn.sectionSub}>Selectable filter tags, disabled state</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          <Chip label="Selected" emoji="✨" selected={chipSelected} onPress={() => setChipSelected(!chipSelected)} />
+          <Chip label="Unselected" emoji="🍕" selected={false} onPress={() => setChipSelected(true)} />
+          <Chip label="Colored" emoji="🚕" color={C.income} selected={false} onPress={() => {}} />
+          <Chip label="Disabled" emoji="🔒" disabled selected={false} />
+        </View>
+      </Card>
+
+      {/* ── 12. ListRow ──────────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>ListRow</Text>
+        <Text style={dyn.sectionSub}>Left icon · title · subtitle · right metric · chevron</Text>
+      </View>
+      <Card variant="surface" padding="none" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <ListRow title="Auto / Rickshaw" subtitle="Transport • Yesterday" left={<Text style={dyn.listEmoji}>🛺</Text>} right={<AmountText amountPaise={4000} type="expense" showSign size="md" />} borderBottom showChevron onPress={() => {}} />
+        <ListRow title="Salary Credited" subtitle="Income • Oct 1, 2026" left={<Text style={dyn.listEmoji}>💰</Text>} right={<AmountText amountPaise={5000000} type="income" showSign size="md" />} borderBottom showChevron onPress={() => {}} />
+        <ListRow title="Disabled Row" subtitle="Interaction prevented" left={<Text style={dyn.listEmoji}>🔒</Text>} disabled showChevron />
+      </Card>
+
+      {/* ── 13. Skeleton ─────────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>Skeleton</Text>
+        <Text style={dyn.sectionSub}>Pulsing loading placeholders</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
         <Skeleton width="100%" height={24} style={{ marginBottom: spacing.sm }} />
         <Skeleton width="75%" height={16} style={{ marginBottom: spacing.sm }} />
         <Skeleton width="40%" height={16} />
       </Card>
 
-      {/* 10. ErrorBanner */}
-      <SectionHeader
-        title="ErrorBanner"
-        subtitle="Actionable error states with retry & dismiss callbacks"
-      />
-      <Card variant="surface" style={styles.galleryCard}>
+      {/* ── 14. ErrorBanner ──────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>ErrorBanner</Text>
+        <Text style={dyn.sectionSub}>Actionable error states with retry & dismiss</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
         {!bannerDismissed ? (
-          <ErrorBanner
-            message="Database query timed out while loading valuations."
-            onRetry={() => {}}
-            onDismiss={() => setBannerDismissed(true)}
-          />
+          <ErrorBanner message="Database query timed out while loading valuations." onRetry={() => {}} onDismiss={() => setBannerDismissed(true)} />
         ) : (
-          <Button
-            title="Restore Error Banner"
-            size="sm"
-            variant="secondary"
-            onPress={() => setBannerDismissed(false)}
-          />
+          <Button title="Restore Error Banner" size="sm" variant="secondary" onPress={() => setBannerDismissed(false)} />
         )}
       </Card>
 
-      {/* 11. EmptyState */}
-      <SectionHeader
-        title="EmptyState"
-        subtitle="Friendly fallback when lists, accounts, or searches are empty"
-      />
-      <Card variant="surface" style={styles.galleryCard}>
-        <EmptyState
-          emoji="📦"
-          title="No Transactions Found"
-          description="Try adjusting your date range or speaking an expense using the mic button."
-          actionTitle="Add Transaction"
-          onAction={() => {}}
+      {/* ── 15. EmptyState ───────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>EmptyState</Text>
+        <Text style={dyn.sectionSub}>Friendly fallback for empty lists / searches</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <EmptyState emoji="📦" title="No Transactions Found" description="Try adjusting your date range or speaking an expense using the mic button." actionTitle="Add Transaction" onAction={() => {}} />
+      </Card>
+
+      {/* ── 16. Keypad ───────────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>Keypad</Text>
+        <Text style={dyn.sectionSub}>3×4 numeric pad with haptic feedback</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <Text style={dyn.keypadValue}>{keypadValue || '0'}</Text>
+        <Keypad
+          onDigit={(c) => setKeypadValue((v) => (v.length < 10 ? v + c : v))}
+          onDelete={() => setKeypadValue((v) => v.slice(0, -1))}
         />
       </Card>
 
-      {/* 12. BottomSheet */}
-      <SectionHeader
-        title="BottomSheet"
-        subtitle="Slide-up modal container with drag handle, title & backdrop dismissal"
-      />
-      <Card variant="surface" style={styles.galleryCard}>
-        <Button
-          title="Open Demo BottomSheet"
-          variant="primary"
-          onPress={() => setSheetVisible(true)}
-          icon={<ChartIcon size={16} color={colors.white} />}
+      {/* ── 17. FloatingNav ──────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>FloatingNav</Text>
+        <Text style={dyn.sectionSub}>5-tab pill with centre mic button — tap tabs to switch</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <FloatingNav
+          activeTab={activeNavTab}
+          onSelectTab={setActiveNavTab}
+          onCenterAction={() => {}}
         />
       </Card>
 
-      <BottomSheet
-        visible={sheetVisible}
-        onClose={() => setSheetVisible(false)}
-        title="UI Kit BottomSheet"
-      >
-        <Text style={styles.sheetText}>
-          This bottom sheet is driven by tokens (radii.xl, modalBackdrop, border) and handles
-          touch dismissal, accessible drag handle, and cross-platform keyboard offsets.
+      {/* ── 18. BottomSheet ──────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>BottomSheet</Text>
+        <Text style={dyn.sectionSub}>Slide-up with drag handle, title, backdrop dismissal</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <Button title="Open Demo BottomSheet" variant="primary" onPress={() => setSheetVisible(true)} icon={<ChartIcon size={16} color={C.onAccent} />} />
+      </Card>
+
+      <BottomSheet visible={sheetVisible} onClose={() => setSheetVisible(false)} title="UI Kit BottomSheet">
+        <Text style={dyn.sheetText}>
+          This bottom sheet is themed by useTheme() — surface, border, modalBackdrop, handle colour.
+          Drag handle, close button, backdrop tap, and keyboard offset all work.
         </Text>
-        <Button
-          title="Close Sheet"
-          variant="secondary"
-          onPress={() => setSheetVisible(false)}
-          style={{ marginTop: spacing.lg }}
-        />
+        <Button title="Close Sheet" variant="secondary" onPress={() => setSheetVisible(false)} style={{ marginTop: spacing.lg }} />
       </BottomSheet>
-    </Screen>
+    </ScrollView>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────
+// Root export: theme switcher lives here
+// ──────────────────────────────────────────────────────────────
+export default function ComponentGalleryScreen() {
+  const router = useRouter();
+  const { activeTheme } = useTheme();
+
+  // Local override: start from the global active theme but let user flip locally
+  const [localTheme, setLocalTheme] = useState<'night' | 'pocket'>(activeTheme);
+  const C = localTheme === 'night' ? nightColors : pocketColors;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      {/* ── Top Bar ────────────────────────────────────────── */}
+      <View style={[styles.topBar, { backgroundColor: C.surface, borderBottomColor: C.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <Ionicons name="chevron-back" size={20} color={C.accent} />
+          <Text style={[styles.backText, { color: C.accent }]}>Settings</Text>
+        </TouchableOpacity>
+
+        <View style={styles.titleBlock}>
+          <Text style={[styles.pageTitle, { color: C.text }]}>Component Gallery</Text>
+          <Text style={[styles.pageSub, { color: C.textMuted }]}>Design System · D1 + D2</Text>
+        </View>
+
+        {/* Theme Switcher */}
+        <View style={[styles.themePill, { backgroundColor: C.surface2, borderColor: C.border }]}>
+          {(['night', 'pocket'] as const).map((t) => (
+            <TouchableOpacity
+              key={t}
+              onPress={() => setLocalTheme(t)}
+              style={[
+                styles.themeOption,
+                localTheme === t && { backgroundColor: C.accent, borderRadius: radii.round },
+              ]}
+              activeOpacity={0.75}
+            >
+              <Text
+                style={[
+                  styles.themeLabel,
+                  { color: localTheme === t ? C.onAccent : C.textMuted },
+                ]}
+              >
+                {t === 'night' ? '🌙' : '☀️'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* ── Gallery Body ─────────────────────────────────── */}
+      <GalleryContent localTheme={localTheme} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  topHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    gap: spacing.sm,
   },
-  backArrow: {
-    color: colors.primary,
-    fontSize: typography.sizeLg,
-    marginRight: spacing.xs,
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   backText: {
-    color: colors.primary,
     fontFamily: typography.bodySemiBold,
     fontSize: typography.sizeSm,
   },
+  titleBlock: {
+    flex: 1,
+    marginLeft: spacing.xs,
+  },
   pageTitle: {
-    color: colors.text,
     fontFamily: typography.bodyBold,
-    fontSize: typography.sizeXxl,
+    fontSize: typography.sizeLg,
   },
-  pageSubtitle: {
-    color: colors.muted,
+  pageSub: {
     fontFamily: typography.body,
-    fontSize: typography.sizeSm,
-    marginTop: 4,
+    fontSize: typography.sizeXs,
   },
-  galleryCard: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  colorGrid: {
+  themePill: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  colorCell: {
-    alignItems: 'center',
-    width: 72,
-  },
-  colorSwatch: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.md,
-    marginBottom: 4,
+    borderRadius: radii.round,
     borderWidth: 1,
-    borderColor: colors.border,
+    overflow: 'hidden',
+    padding: 2,
+    gap: 2,
   },
-  colorName: {
-    color: colors.muted,
-    fontFamily: typography.bodyMedium,
-    fontSize: typography.sizeXs,
-  },
-  rowWrap: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  themeOption: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.round,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  subItem: {
-    alignItems: 'center',
-  },
-  stateLabel: {
-    color: colors.muted,
-    fontFamily: typography.bodyMedium,
-    fontSize: typography.sizeXs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing.xs,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.md,
-  },
-  buttonStack: {
-    gap: spacing.sm,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  iconButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  iconCell: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  iconLabel: {
-    color: colors.muted,
-    fontFamily: typography.body,
-    fontSize: typography.sizeXs,
-  },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  cardVariantStack: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontFamily: typography.bodyBold,
+  themeLabel: {
     fontSize: typography.sizeBase,
-    marginBottom: 4,
-  },
-  cardBody: {
-    color: colors.muted,
-    fontFamily: typography.body,
-    fontSize: typography.sizeSm,
-  },
-  listEmoji: {
-    fontSize: 24,
-  },
-  sheetText: {
-    color: colors.textSecondary,
-    fontFamily: typography.body,
-    fontSize: typography.sizeBase,
-    lineHeight: typography.lineHeightBase,
   },
 });

@@ -1,3 +1,13 @@
+/**
+ * SegmentedControl component for Wini.
+ * Where it fits: Used for Speak | Type, Expense | Income, and period selection.
+ *
+ * Implements WINI_DESIGN_SPEC.md Section 5.4:
+ * - Pill track: rounded container with surface tone
+ * - Active segment: Filled pill (white on Night with #0B0B0D text; white with shadow on Pocket)
+ * - Inactive segment: Muted text
+ */
+
 import React from 'react';
 import {
   StyleSheet,
@@ -7,7 +17,8 @@ import {
   ViewStyle,
   StyleProp,
 } from 'react-native';
-import { colors, radii, spacing, typography } from '../tokens';
+import { radii, spacing, typography, elevations } from '../tokens';
+import { useTheme } from '../ThemeContext';
 
 export interface SegmentOption {
   key: string;
@@ -28,16 +39,37 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
   onChange,
   style,
 }) => {
+  const { colors, isDark } = useTheme();
+
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.surface2,
+          borderColor: colors.border,
+        },
+        style,
+      ]}
+    >
       {options.map((opt) => {
         const isSelected = opt.key === selectedKey;
+        const activeBg = colors.white;
+        const activeText = colors.black;
+        const activeShadow = isDark ? null : elevations.sm;
+
         return (
           <TouchableOpacity
             key={opt.key}
             activeOpacity={0.8}
             onPress={() => onChange(opt.key)}
-            style={[styles.segment, isSelected && styles.segmentSelected]}
+            style={[
+              styles.segment,
+              isSelected && {
+                backgroundColor: activeBg,
+                ...activeShadow,
+              },
+            ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: isSelected }}
           >
@@ -45,6 +77,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
             <Text
               style={[
                 styles.label,
+                { color: isSelected ? activeText : colors.textMuted },
                 isSelected && styles.labelSelected,
               ]}
               numberOfLines={1}
@@ -61,11 +94,10 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radii.md,
+    borderRadius: radii.round,
     padding: spacing.xs,
     borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 44,
   },
   segment: {
     flex: 1,
@@ -73,12 +105,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.sm,
-    minHeight: 40,
-  },
-  segmentSelected: {
-    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.round,
   },
   icon: {
     marginRight: spacing.xs,
@@ -86,10 +114,9 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: typography.bodyMedium,
     fontSize: typography.sizeSm,
-    color: colors.muted,
   },
   labelSelected: {
     fontFamily: typography.bodySemiBold,
-    color: colors.white,
+    fontWeight: '700',
   },
 });

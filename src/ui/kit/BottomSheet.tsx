@@ -11,7 +11,8 @@ import {
   ViewStyle,
   StyleProp,
 } from 'react-native';
-import { colors, radii, spacing, typography } from '../tokens';
+import { radii, spacing, typography } from '../tokens';
+import { useTheme } from '../ThemeContext';
 
 export interface BottomSheetProps {
   visible: boolean;
@@ -28,6 +29,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   children,
   style,
 }) => {
+  const { colors } = useTheme();
+
   return (
     <Modal
       visible={visible}
@@ -40,19 +43,28 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         style={styles.overlay}
       >
         <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.backdrop} />
+          <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]} />
         </TouchableWithoutFeedback>
 
-        <View style={[styles.sheet, style]}>
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+            style,
+          ]}
+        >
           {/* Drag Handle Indicator */}
           <View style={styles.handleContainer}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, { backgroundColor: colors.muted }]} />
           </View>
 
           {/* Header */}
           {title ? (
-            <View style={styles.header}>
-              <Text style={styles.title}>{title}</Text>
+            <View style={[styles.header, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
               <TouchableOpacity
                 onPress={onClose}
                 style={styles.closeButton}
@@ -60,7 +72,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                 accessibilityRole="button"
                 accessibilityLabel="Close"
               >
-                <Text style={styles.closeText}>✕</Text>
+                <Text style={[styles.closeText, { color: colors.muted }]}>✕</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -83,16 +95,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.modalBackdrop,
   },
   sheet: {
-    backgroundColor: colors.surface,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: colors.border,
     paddingBottom: spacing.xxl,
     maxHeight: '90%',
   },
@@ -104,7 +113,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: radii.round,
-    backgroundColor: colors.muted,
   },
   header: {
     flexDirection: 'row',
@@ -113,18 +121,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   title: {
     fontFamily: typography.bodyBold,
     fontSize: typography.sizeLg,
-    color: colors.text,
   },
   closeButton: {
     padding: spacing.xs,
   },
   closeText: {
-    color: colors.muted,
     fontSize: typography.sizeBase,
     fontWeight: 'bold',
   },
@@ -133,3 +138,4 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
 });
+
