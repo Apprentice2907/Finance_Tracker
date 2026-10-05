@@ -19,6 +19,13 @@ import {
   CREATE_SETTINGS_TABLE,
   CREATE_VOICE_LOG_TABLE,
   CREATE_VOICE_LOG_INDEXES,
+  CREATE_ACCOUNTS_TABLE,
+  CREATE_ACCOUNTS_INDEXES,
+  CREATE_ACCOUNT_VALUATIONS_TABLE,
+  CREATE_ACCOUNT_VALUATIONS_INDEXES,
+  CREATE_VAULT_BANK_TABLE,
+  CREATE_VAULT_CARDS_TABLE,
+  DEFAULT_ACCOUNTS,
 } from './schema';
 import { DEFAULT_CATEGORIES } from '../domain/categories';
 import { generateId } from '../domain/id';
@@ -44,9 +51,19 @@ export async function migrateDatabase(db: DatabaseAdapter): Promise<void> {
     const now = new Date().toISOString();
     for (const cat of DEFAULT_CATEGORIES) {
       await db.runAsync(
-        `INSERT OR IGNORE INTO categories (id, name, emoji, color, kind, sort_order, created_at, updated_at, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
-        [cat.id, cat.name, cat.emoji, cat.color, cat.kind, cat.sort_order, now, now]
+        `INSERT OR IGNORE INTO categories (id, name, emoji, color, kind, sort_order, is_system, created_at, updated_at, deleted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
+        [
+          cat.id,
+          cat.name,
+          cat.emoji,
+          cat.color,
+          cat.kind,
+          cat.sort_order,
+          cat.id === 'cat-other' || cat.id === 'cat-income' || cat.id === 'cat_other' || cat.id === 'cat_income' ? 1 : 0,
+          now,
+          now,
+        ]
       );
     }
 
@@ -70,6 +87,111 @@ export async function migrateDatabase(db: DatabaseAdapter): Promise<void> {
     await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('prefer_on_device', '1');`);
     await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES ('voice_engine', 'expo');`);
 
-    await db.execAsync(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION};`);
+    await db.execAsync(`PRAGMA user_version = 2;`);
+  }
+
+  if (currentVersion < 3) {
+    // Migration to Wini v2:
+    // 1. Snapshot existing data into backup tables
+    // 2. Wrap all schema alterations in a single SQL transaction
+    // 3. Add accounts, valuations, vault tables, is_system, and account_id
+    // 4. Seed default accounts (Cash, HDFC Bank) and v2 settings
+    await db.execAsync('BEGIN TRANSACTION;');
+    try {
+      // Step 1: Snapshot existing tables before modification
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS _v2_migration_snapshot_categories AS SELECT * FROM categories;
+        CREATE TABLE IF NOT EXISTS _v2_migration_snapshot_transactions AS SELECT * FROM transactions;
+        CREATE TABLE IF NOT EXISTS _v2_migration_snapshot_settings AS SELECT * FROM settings;
+      `);
+
+      // Step 2: Add is_system to categories if missing
+      const categoryColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(categories);');
+      const hasIsSystem = categoryColumns.some((col) => col.name === 'is_system');
+      if (!hasIsSystem) {
+        await db.execAsync('ALTER TABLE categories ADD COLUMN is_system INTEGER NOT NULL DEFAULT 0;');
+      }
+
+      // Mark default fallback categories as system categories
+      await db.execAsync(`
+        UPDATE categories SET is_system = 1 WHERE id IN ('cat-other', 'cat-income', 'cat_other', 'cat_income');
+      `);
+
+      // Step 3: Create Accounts table & indexes
+      await db.execAsync(CREATE_ACCOUNTS_TABLE);
+      for (const indexSql of CREATE_ACCOUNTS_INDEXES) {
+        await db.execAsync(indexSql);
+      }
+
+      // Step 4: Create Account Valuations table & indexes
+      await db.execAsync(CREATE_ACCOUNT_VALUATIONS_TABLE);
+      for (const indexSql of CREATE_ACCOUNT_VALUATIONS_INDEXES) {
+        await db.execAsync(indexSql);
+      }
+
+      // Step 5: Create Vault tables
+      await db.execAsync(CREATE_VAULT_BANK_TABLE);
+      await db.execAsync(CREATE_VAULT_CARDS_TABLE);
+
+      // Step 6: Add account_id to transactions if missing
+      const txColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(transactions);');
+      const hasAccountId = txColumns.some((col) => col.name === 'account_id');
+      if (!hasAccountId) {
+        await db.execAsync('ALTER TABLE transactions ADD COLUMN account_id TEXT REFERENCES accounts(id);');
+      }
+      await db.execAsync('CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON transactions(account_id);');
+
+      // Step 7: Seed default accounts if none exist
+      const now = new Date().toISOString();
+      for (const acc of DEFAULT_ACCOUNTS) {
+        await db.runAsync(
+          `INSERT OR IGNORE INTO accounts (
+            id, name, type, institution, opening_balance_paise, current_value_paise,
+            valuation_updated_at, include_in_total, sort_order, aliases_json, created_at, updated_at, deleted_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
+          [
+            acc.id,
+            acc.name,
+            acc.type,
+            acc.institution,
+            acc.opening_balance_paise,
+            acc.current_value_paise,
+            acc.valuation_updated_at,
+            acc.include_in_total,
+            acc.sort_order,
+            acc.aliases_json,
+            now,
+            now,
+          ]
+        );
+      }
+
+      // Step 8: Seed v2 settings keys
+      const defaultSettings: [string, string][] = [
+        ['auto_add_mode', 'sure'],
+        ['auto_add_limit_paise', '200000'], // ₹2,000 limit for auto-add
+        ['default_account_id', 'acc_cash'],
+        ['quarter_basis', 'calendar'],
+        ['backup_auto', '1'],
+        ['backup_format', 'csv'],
+        ['backup_folder_uri', ''],
+        ['last_backup_at', ''],
+        ['backup_keep_count', '6'],
+        ['allow_sensitive_card_fields', '1'],
+        ['speech_silence_ms', '1000'],
+      ];
+
+      for (const [key, value] of defaultSettings) {
+        await db.runAsync(`INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?);`, [key, value]);
+      }
+
+      // Step 9: Finalize version and commit
+      await db.execAsync(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION};`);
+      await db.execAsync('COMMIT;');
+    } catch (error) {
+      await db.execAsync('ROLLBACK;');
+      throw error;
+    }
   }
 }
+

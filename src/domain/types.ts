@@ -19,6 +19,7 @@ export interface Category {
   color: string;
   kind: CategoryKind;
   sort_order: number;
+  is_system?: boolean | number;
   created_at: string;
   updated_at: string;
   // Soft delete: when deleted, we set a timestamp instead of dropping the row.
@@ -34,6 +35,7 @@ export interface Transaction {
   // with whole integers, making financial calculations 100% bug-free.
   amount_paise: number;
   category_id: string;
+  account_id?: string | null;
   note: string;
   occurred_on: string; // YYYY-MM-DD
   source: TransactionSource;
@@ -48,6 +50,7 @@ export interface TransactionWithCategory extends Transaction {
   category_name?: string;
   category_emoji?: string;
   category_color?: string;
+  account_name?: string;
 }
 
 export interface KeywordMapEntry {
@@ -116,6 +119,7 @@ export interface CreateTransactionInput {
   type: TransactionType;
   amount_paise: number;
   category_id: string;
+  account_id?: string | null;
   note: string;
   occurred_on: string;
   source: TransactionSource;
@@ -127,6 +131,7 @@ export interface UpdateTransactionInput {
   type?: TransactionType;
   amount_paise?: number;
   category_id?: string;
+  account_id?: string | null;
   note?: string;
   occurred_on?: string;
   source?: TransactionSource;
@@ -139,6 +144,14 @@ export interface CreateCategoryInput {
   color: string;
   kind: CategoryKind;
   sort_order?: number;
+  is_system?: boolean;
+}
+
+export interface UpdateCategoryInput {
+  name?: string;
+  emoji?: string;
+  color?: string;
+  sort_order?: number;
 }
 
 export interface BackupData {
@@ -149,4 +162,188 @@ export interface BackupData {
   categories: Category[];
   transactions: Transaction[];
   keywordMap: KeywordMapEntry[];
+  accounts?: Account[];
+  accountValuations?: AccountValuation[];
 }
+
+// --- Accounts (Wini v2) ---
+
+export type AccountType = 'bank' | 'cash' | 'wallet' | 'investment';
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  institution: string | null;
+  opening_balance_paise: number;
+  current_value_paise: number | null; // investments only, manual
+  valuation_updated_at: string | null;
+  include_in_total: boolean | number;
+  sort_order: number;
+  aliases_json: string; // JSON array of spoken aliases e.g. '["cash", "nakad"]'
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface AccountValuation {
+  id: string;
+  account_id: string;
+  value_paise: number;
+  recorded_on: string;
+  created_at: string;
+}
+
+export interface AccountWithBalance extends Account {
+  balance_paise: number;
+}
+
+export interface CreateAccountInput {
+  id?: string;
+  name: string;
+  type: AccountType;
+  institution?: string | null;
+  opening_balance_paise?: number;
+  current_value_paise?: number | null;
+  include_in_total?: boolean;
+  sort_order?: number;
+  aliases?: string[];
+}
+
+export interface UpdateAccountInput {
+  name?: string;
+  type?: AccountType;
+  institution?: string | null;
+  opening_balance_paise?: number;
+  current_value_paise?: number | null;
+  include_in_total?: boolean;
+  sort_order?: number;
+  aliases?: string[];
+}
+
+// --- Vault (Wini v2) ---
+
+export interface VaultBank {
+  id: string;
+  account_holder_name_encrypted: string | null;
+  bank_name: string;
+  account_number_encrypted: string | null;
+  ifsc_encrypted: string | null;
+  customer_id_encrypted: string | null;
+  upi_id_encrypted: string | null;
+  branch: string | null;
+  notes_encrypted: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface CreateVaultBankInput {
+  id?: string;
+  account_holder_name_encrypted?: string | null;
+  bank_name: string;
+  account_number_encrypted?: string | null;
+  ifsc_encrypted?: string | null;
+  customer_id_encrypted?: string | null;
+  upi_id_encrypted?: string | null;
+  branch?: string | null;
+  notes_encrypted?: string | null;
+}
+
+export interface UpdateVaultBankInput {
+  account_holder_name_encrypted?: string | null;
+  bank_name?: string;
+  account_number_encrypted?: string | null;
+  ifsc_encrypted?: string | null;
+  customer_id_encrypted?: string | null;
+  upi_id_encrypted?: string | null;
+  branch?: string | null;
+  notes_encrypted?: string | null;
+}
+
+export type CardNetwork = 'visa' | 'mastercard' | 'rupay' | 'amex' | 'other';
+
+export interface VaultCard {
+  id: string;
+  nickname: string;
+  network: CardNetwork;
+  holder_name_encrypted: string | null;
+  card_number_encrypted: string;
+  expiry_encrypted: string | null;
+  cvv_encrypted: string | null;
+  pin_encrypted: string | null;
+  linked_account_id: string | null;
+  billing_day: number | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface CreateVaultCardInput {
+  id?: string;
+  nickname: string;
+  network: CardNetwork;
+  holder_name_encrypted?: string | null;
+  card_number_encrypted: string;
+  expiry_encrypted?: string | null;
+  cvv_encrypted?: string | null;
+  pin_encrypted?: string | null;
+  linked_account_id?: string | null;
+  billing_day?: number | null;
+}
+
+export interface UpdateVaultCardInput {
+  nickname?: string;
+  network?: CardNetwork;
+  holder_name_encrypted?: string | null;
+  card_number_encrypted?: string;
+  expiry_encrypted?: string | null;
+  cvv_encrypted?: string | null;
+  pin_encrypted?: string | null;
+  linked_account_id?: string | null;
+  billing_day?: number | null;
+}
+
+// --- Reports (Wini v2) ---
+
+export type ReportPeriodType = 'week' | 'month' | 'quarter' | 'year' | 'custom';
+export type QuarterBasis = 'calendar' | 'indian_fy';
+
+export interface PeriodReport {
+  periodType: ReportPeriodType;
+  periodKey: string;
+  startDate: string;
+  endDate: string;
+  totalIncomePaise: number;
+  totalExpensePaise: number;
+  netPaise: number;
+  savingsRate: number; // percentage, e.g. 24.5
+  prevPeriod?: {
+    totalIncomePaise: number;
+    totalExpensePaise: number;
+    netPaise: number;
+    incomeChangePct: number;
+    expenseChangePct: number;
+    netChangePct: number;
+  };
+  cashflow: {
+    date: string;
+    incomePaise: number;
+    expensePaise: number;
+    netPaise: number;
+  }[];
+  categoryBreakdown: {
+    category_id: string;
+    category_name: string;
+    category_emoji: string;
+    category_color: string;
+    kind: CategoryKind;
+    total_paise: number;
+    count: number;
+    share_pct: number;
+    average_paise: number;
+  }[];
+  insights: string[];
+  topTransactions: TransactionWithCategory[];
+}
+

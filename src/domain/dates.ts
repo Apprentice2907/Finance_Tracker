@@ -151,3 +151,107 @@ export function getDateRangeList(startDate: string, endDate: string): string[] {
   return dates;
 }
 
+/**
+ * Returns { startDate, endDate, key } for the Monday-to-Sunday week containing target date.
+ */
+export function getWeekRange(dateStr?: string): { startDate: string; endDate: string; key: string } {
+  const target = dateStr || getTodayIndia();
+  const [y, m, d] = target.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const day = date.getUTCDay(); // 0 is Sunday, 1 is Monday...
+  const diffToMonday = (day + 6) % 7; // Monday = 0, Tuesday = 1 ... Sunday = 6
+
+  const monday = new Date(date);
+  monday.setUTCDate(date.getUTCDate() - diffToMonday);
+
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+
+  const toStr = (dt: Date) => {
+    const yr = dt.getUTCFullYear();
+    const mo = String(dt.getUTCMonth() + 1).padStart(2, '0');
+    const dy = String(dt.getUTCDate()).padStart(2, '0');
+    return `${yr}-${mo}-${dy}`;
+  };
+
+  const startDate = toStr(monday);
+  const endDate = toStr(sunday);
+  return { startDate, endDate, key: `W_${startDate}` };
+}
+
+/**
+ * Returns { startDate, endDate, key } for the month containing target date.
+ */
+export function getMonthRange(dateStr?: string): { startDate: string; endDate: string; key: string } {
+  const target = dateStr || getTodayIndia();
+  const [yearStr, monthStr] = target.split('-');
+  const startDate = `${yearStr}-${monthStr}-01`;
+  const endDate = getEndOfMonth(target);
+  return { startDate, endDate, key: `${yearStr}-${monthStr}` };
+}
+
+/**
+ * Returns { startDate, endDate, key } for the quarter containing target date.
+ * Supports both standard 'calendar' quarters (Q1 Jan-Mar) and 'indian_fy' (Q1 Apr-Jun).
+ */
+export function getQuarterRange(
+  dateStr?: string,
+  basis: 'calendar' | 'indian_fy' = 'calendar'
+): { startDate: string; endDate: string; key: string } {
+  const target = dateStr || getTodayIndia();
+  const [y, m] = target.split('-').map(Number);
+
+  if (basis === 'indian_fy') {
+    // Indian FY: Apr-Jun (Q1), Jul-Sep (Q2), Oct-Dec (Q3), Jan-Mar (Q4)
+    if (m >= 4 && m <= 6) {
+      return { startDate: `${y}-04-01`, endDate: `${y}-06-30`, key: `FY${y}_Q1` };
+    } else if (m >= 7 && m <= 9) {
+      return { startDate: `${y}-07-01`, endDate: `${y}-09-30`, key: `FY${y}_Q2` };
+    } else if (m >= 10 && m <= 12) {
+      return { startDate: `${y}-10-01`, endDate: `${y}-12-31`, key: `FY${y}_Q3` };
+    } else {
+      // Jan-Mar belongs to FY starting previous year
+      const fyStart = y - 1;
+      return { startDate: `${y}-01-01`, endDate: `${y}-03-31`, key: `FY${fyStart}_Q4` };
+    }
+  }
+
+  // Calendar quarter:
+  if (m >= 1 && m <= 3) {
+    return { startDate: `${y}-01-01`, endDate: `${y}-03-31`, key: `${y}_Q1` };
+  } else if (m >= 4 && m <= 6) {
+    return { startDate: `${y}-04-01`, endDate: `${y}-06-30`, key: `${y}_Q2` };
+  } else if (m >= 7 && m <= 9) {
+    return { startDate: `${y}-07-01`, endDate: `${y}-09-30`, key: `${y}_Q3` };
+  } else {
+    return { startDate: `${y}-10-01`, endDate: `${y}-12-31`, key: `${y}_Q4` };
+  }
+}
+
+/**
+ * Returns { startDate, endDate, key } for the year containing target date.
+ */
+export function getYearRange(
+  dateStr?: string,
+  basis: 'calendar' | 'indian_fy' = 'calendar'
+): { startDate: string; endDate: string; key: string } {
+  const target = dateStr || getTodayIndia();
+  const [y, m] = target.split('-').map(Number);
+
+  if (basis === 'indian_fy') {
+    const fyStart = m >= 4 ? y : y - 1;
+    return {
+      startDate: `${fyStart}-04-01`,
+      endDate: `${fyStart + 1}-03-31`,
+      key: `FY${fyStart}-${fyStart + 1}`,
+    };
+  }
+
+  return {
+    startDate: `${y}-01-01`,
+    endDate: `${y}-12-31`,
+    key: `${y}`,
+  };
+}
+
+
