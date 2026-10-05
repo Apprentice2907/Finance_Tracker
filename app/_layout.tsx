@@ -15,12 +15,85 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
 import * as SplashScreen from 'expo-splash-screen';
-import { colors } from '../src/ui/tokens';
+import { ThemeProvider, useTheme } from '../src/ui/ThemeContext';
 import { WalletIcon, HistoryIcon, ChartIcon, SettingsIcon } from '../src/ui/icons';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { useAppStore } from '../src/state/useAppStore';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+function NavigationShell() {
+  const { colors, isDark } = useTheme();
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              backgroundColor: colors.surface,
+              borderTopColor: colors.border,
+            },
+          ],
+          tabBarActiveTintColor: colors.accent,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarShowLabel: true,
+          tabBarLabelStyle: styles.tabLabel,
+        }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color }) => <WalletIcon size={22} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: 'History',
+            tabBarIcon: ({ color }) => <HistoryIcon size={22} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="insights"
+          options={{
+            title: 'Insights',
+            tabBarIcon: ({ color }) => <ChartIcon size={22} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+            tabBarIcon: ({ color }) => <SettingsIcon size={22} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="voice-lab"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="gallery"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="accounts"
+          options={{
+            href: null,
+          }}
+        />
+      </Tabs>
+    </View>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -49,66 +122,9 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary fallbackTitle="Wini encountered a problem">
-      <View style={styles.container}>
-        <StatusBar style="light" />
-        <Tabs
-          screenOptions={{
-            headerShown: false,
-            tabBarStyle: styles.tabBar,
-            tabBarActiveTintColor: colors.primary,
-            tabBarInactiveTintColor: colors.muted,
-            tabBarShowLabel: true,
-            tabBarLabelStyle: styles.tabLabel,
-          }}
-        >
-          <Tabs.Screen
-            name="index"
-            options={{
-              title: 'Home',
-              tabBarIcon: ({ color }) => <WalletIcon size={22} color={color} />,
-            }}
-          />
-          <Tabs.Screen
-            name="history"
-            options={{
-              title: 'History',
-              tabBarIcon: ({ color }) => <HistoryIcon size={22} color={color} />,
-            }}
-          />
-          <Tabs.Screen
-            name="insights"
-            options={{
-              title: 'Insights',
-              tabBarIcon: ({ color }) => <ChartIcon size={22} color={color} />,
-            }}
-          />
-          <Tabs.Screen
-            name="settings"
-            options={{
-              title: 'Settings',
-              tabBarIcon: ({ color }) => <SettingsIcon size={22} color={color} />,
-            }}
-          />
-          <Tabs.Screen
-            name="voice-lab"
-            options={{
-              href: null,
-            }}
-          />
-          <Tabs.Screen
-            name="gallery"
-            options={{
-              href: null,
-            }}
-          />
-          <Tabs.Screen
-            name="accounts"
-            options={{
-              href: null,
-            }}
-          />
-        </Tabs>
-      </View>
+      <ThemeProvider>
+        <NavigationShell />
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
@@ -116,11 +132,8 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   tabBar: {
-    backgroundColor: colors.surface,
-    borderTopColor: colors.border,
     borderTopWidth: 1,
     height: Platform.OS === 'ios' ? 88 : 64,
     paddingBottom: Platform.OS === 'ios' ? 28 : 8,
@@ -131,3 +144,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

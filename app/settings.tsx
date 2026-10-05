@@ -21,6 +21,7 @@ import {
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { colors, radii, spacing, typography } from '../src/ui/tokens';
+import { useTheme } from '../src/ui/ThemeContext';
 import { useAppStore } from '../src/state/useAppStore';
 import { TrashIcon, ExportIcon, ImportIcon, MicIcon } from '../src/ui/icons';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
@@ -53,6 +54,7 @@ function SettingsContent() {
     setWhisperLanguage,
     clearVoiceLogs,
   } = useAppStore();
+  const { mode: themeMode, activeTheme, colors: themeColors, setThemeMode } = useTheme();
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
   const [isBackupStale, setIsBackupStale] = useState(false);
   const [importPreview, setImportPreview] = useState<BackupPreview | null>(null);
@@ -257,17 +259,115 @@ function SettingsContent() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.bg }]}>
+      <StatusBar
+        barStyle={activeTheme === 'night' ? 'light-content' : 'dark-content'}
+        backgroundColor={themeColors.bg}
+      />
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: themeColors.bg }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Settings ⚙️</Text>
-          <Text style={styles.subtitle}>Categories, learned vocabulary & data backup</Text>
+          <Text style={[styles.title, { color: themeColors.text }]}>Settings ⚙️</Text>
+          <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
+            Categories, learned vocabulary & data backup
+          </Text>
+        </View>
+
+        {/* Section: Appearance & Theme */}
+        <View style={[styles.section, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Appearance & Theme 🎨</Text>
+          </View>
+          <Text style={[styles.sectionDesc, { color: themeColors.textMuted }]}>
+            Choose between Night (dark fintech with lime accent) and Pocket (clean light wallet with blue accent).
+          </Text>
+
+          <View style={styles.engineTabsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.engineTab,
+                { backgroundColor: themeColors.surface2, borderColor: themeColors.border },
+                themeMode === 'system' && [
+                  styles.engineTabActive,
+                  { borderColor: themeColors.accent, backgroundColor: themeColors.surface2 },
+                ],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setThemeMode('system');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.engineTabText,
+                  { color: themeColors.text },
+                  themeMode === 'system' && { color: themeColors.accent, fontWeight: '700' },
+                ]}
+              >
+                System
+              </Text>
+              <Text style={[styles.engineTabSub, { color: themeColors.textMuted }]}>Auto-match OS</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.engineTab,
+                { backgroundColor: themeColors.surface2, borderColor: themeColors.border },
+                themeMode === 'night' && [
+                  styles.engineTabActive,
+                  { borderColor: themeColors.accent, backgroundColor: themeColors.surface2 },
+                ],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setThemeMode('night');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.engineTabText,
+                  { color: themeColors.text },
+                  themeMode === 'night' && { color: themeColors.accent, fontWeight: '700' },
+                ]}
+              >
+                Night 🌙
+              </Text>
+              <Text style={[styles.engineTabSub, { color: themeColors.textMuted }]}>Dark fintech</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.engineTab,
+                { backgroundColor: themeColors.surface2, borderColor: themeColors.border },
+                themeMode === 'pocket' && [
+                  styles.engineTabActive,
+                  { borderColor: themeColors.accent, backgroundColor: themeColors.surface2 },
+                ],
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setThemeMode('pocket');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.engineTabText,
+                  { color: themeColors.text },
+                  themeMode === 'pocket' && { color: themeColors.accent, fontWeight: '700' },
+                ]}
+              >
+                Pocket ☀️
+              </Text>
+              <Text style={[styles.engineTabSub, { color: themeColors.textMuted }]}>Light wallet</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Section: Voice & Accuracy */}
