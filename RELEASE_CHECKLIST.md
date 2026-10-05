@@ -6,8 +6,15 @@ This document details the exact manual steps and verification checklist to build
 
 ## 1. EAS Account & Build Commands (Run on your machine)
 
-> [!NOTE]
-> Never commit EAS credentials or auth tokens to git. Run these commands locally in your terminal.
+> [!IMPORTANT]
+> **Always run `npm run prebuild-check` before every EAS build!**
+> This command verifies in ~2 minutes that there are no native library link errors (such as removed `expo-av`), runs dependency audits, tests bundle export, and validates all tests, types, and lints.
+
+### Step 0: Run Prebuild Verification (Crucial)
+```bash
+# Run this before every EAS build to catch native incompatibilities and bundle errors
+npm run prebuild-check
+```
 
 ### Step 1: Login to EAS
 ```bash
@@ -28,6 +35,7 @@ npx eas project:init
 ```bash
 # Generates a standalone Android APK that you can directly install on your phone
 npx eas build --profile preview --platform android
+# When prompted: "Would you like to build an emulator image?" Answer "n" to get a real device APK
 ```
 - When the build finishes, EAS provides a direct download link (and QR code) for the `.apk` file.
 - Download the `.apk` on your Android phone and install it (allow "Install unknown apps" if prompted).

@@ -41,13 +41,7 @@
           "imageWidth": 76
         }
       ],
-      "expo-speech-recognition",
-      [
-        "expo-av",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for recording voice transactions."
-        }
-      ]
+      "expo-speech-recognition"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -48,7 +48,7 @@ When you tap the big floating mic button at the bottom of the Home screen:
 ### 2. Engine Selection & Speech Recognition (`SpeechServiceFactory.ts`, `ExpoSpeechService.ts`, `WhisperSpeechService.ts`)
 - `VoiceSheet` asks `createSpeechService()` to instantiate the active engine:
   - **Phone Recognizer (`ExpoSpeechService`)**: Talks to Android's built-in recognizer, injecting contextual biasing strings (categories, Hindi/English numerals, learned keywords).
-  - **On-Device Whisper (`WhisperSpeechService`)**: Records 16 kHz mono 16-bit PCM WAV audio via `expo-av`, passes an initial vocabulary prompt, and transcribes locally on the CPU using a quantized GGML model (e.g. `base-q5_1`).
+  - **On-Device Whisper (`WhisperSpeechService`)**: Records 16 kHz mono 16-bit PCM WAV audio via `expo-speech-recognition` audio persistence, passes an initial vocabulary prompt, and transcribes locally on the CPU using a quantized GGML model (e.g. `base-q5_1`).
 - *What if the Whisper model isn't downloaded yet?* `SpeechServiceFactory` automatically falls back to the Phone Recognizer with a friendly banner so your voice command never fails!
 - Recognizer returns final transcript along with alternative candidates and timing latency.
 

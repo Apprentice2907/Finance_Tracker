@@ -73,7 +73,7 @@ The parser is **plain TypeScript with no phone stuff inside**, so it can be test
 | **expo-sqlite** | Database on the phone | Offline, fast, no server |
 | **zustand** | Small state store | Less boilerplate than the alternatives |
 | **expo-speech-recognition** | Phone Recognizer | Uses phone's built-in recognizer (biased with contextual hints) |
-| **whisper.rn + expo-av** | On-Device Whisper | 100% offline local speech recognition with quantized ggml models |
+| **whisper.rn + expo-speech-recognition** | On-Device Whisper | 100% offline local speech recognition with quantized ggml models |
 | **react-native-svg** | Charts | Hand-drawn SVG charts, no heavy library |
 | **Jest** | Tests | 203 automated tests (parser, database, backup, voice, whisper) |
 | **EAS Build** | Builds the APK in the cloud | No Android Studio needed on my laptop |

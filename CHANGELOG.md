@@ -20,7 +20,7 @@ All notable changes to the Wini project will be documented in this file.
   - Correction learning feedback: corrected words suggest category associations under Settings.
   - Added 56 realistic mishearing tests in `src/parser/__tests__/misheard.test.ts`.
 - **PART C: On-Device Whisper Engine**:
-  - Integration with `whisper.rn` and `expo-av` with 16 kHz mono 16-bit PCM WAV recording.
+  - Integration with `whisper.rn` and `expo-speech-recognition` audio persistence with 16 kHz mono 16-bit PCM WAV recording.
   - Implemented `WhisperSpeechService` implementing `SpeechService` interface.
   - Initial prompt bias: custom prompt injecting vocabulary, categories, and financial command patterns.
   - Model Manager (`src/speech/ModelManager.ts`): verified catalog of quantized ggml models (`tiny-q5_1`, `base-q5_1`, `small-q5_1`) from official whisper.cpp Hugging Face repository with sha256 checksums, resumable downloads, free space checks, and storage in app document directory.

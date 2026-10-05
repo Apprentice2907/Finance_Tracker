@@ -26,24 +26,20 @@ try {
   };
 }
 
-let Audio: any = null;
+let ExpoSpeechRecognitionModule: any = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Audio = require('expo-av').Audio;
+  ExpoSpeechRecognitionModule = require('expo-speech-recognition').ExpoSpeechRecognitionModule;
 } catch {
-  Audio = {
-    AndroidOutputFormat: { DEFAULT: 0 },
-    AndroidAudioEncoder: { DEFAULT: 0 },
-    IOSAudioQuality: { HIGH: 0 },
-    Recording: class {
-      prepareToRecordAsync = async () => {};
-      startAsync = async () => {};
-      stopAndUnloadAsync = async () => {};
-      getURI = () => 'file:///mock/audio.wav';
-    },
-    getPermissionsAsync: async () => ({ status: 'granted' }),
-    requestPermissionsAsync: async () => ({ status: 'granted' }),
-    setAudioModeAsync: async () => {},
+  ExpoSpeechRecognitionModule = {
+    isRecognitionAvailable: () => false,
+    getStateAsync: async () => 'inactive',
+    requestPermissionsAsync: async () => ({ granted: false, canAskAgain: true, status: 'denied' }),
+    getPermissionsAsync: async () => ({ granted: false, canAskAgain: true, status: 'denied' }),
+    start: () => {},
+    stop: () => {},
+    abort: () => {},
+    addListener: () => ({ remove: () => {} }),
   };
 }
 
@@ -92,32 +88,6 @@ export function buildWhisperPrompt(vocabulary?: {
   return parts.join(' ');
 }
 
-// 16 kHz mono 16-bit PCM WAV configuration required by Whisper
-const WHISPER_RECORDING_OPTIONS: any = {
-  android: {
-    extension: '.wav',
-    outputFormat: Audio?.AndroidOutputFormat?.DEFAULT ?? 0,
-    audioEncoder: Audio?.AndroidAudioEncoder?.DEFAULT ?? 0,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 256000,
-  },
-  ios: {
-    extension: '.wav',
-    audioQuality: Audio?.IOSAudioQuality?.HIGH ?? 0,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 256000,
-    linearPCMBitDepth: 16,
-    linearPCMIsBigEndian: false,
-    linearPCMIsFloat: false,
-  },
-  web: {
-    mimeType: 'audio/wav',
-    bitsPerSecond: 256000,
-  },
-};
-
 export class WhisperSpeechService implements SpeechService {
   readonly engineName = 'whisper';
 
@@ -128,7 +98,9 @@ export class WhisperSpeechService implements SpeechService {
   private state: SpeechState = 'idle';
   private callbacks: SpeechServiceCallbacks = {};
 
-  private recording: any = null;
+  private recordedAudioUri: string | null = null;
+  private audioEndSubscription: { remove: () => void } | null = null;
+  private errorSubscription: { remove: () => void } | null = null;
   private listenStartTime = 0;
   private activeTranscriptionStop: (() => Promise<void>) | null = null;
 
@@ -202,8 +174,8 @@ export class WhisperSpeechService implements SpeechService {
 
   async hasPermissions(): Promise<boolean> {
     try {
-      const { status } = await Audio.getPermissionsAsync();
-      return status === 'granted';
+      const res = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+      return res.granted;
     } catch {
       return false;
     }
@@ -211,8 +183,8 @@ export class WhisperSpeechService implements SpeechService {
 
   async requestPermissions(): Promise<boolean> {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      return status === 'granted';
+      const res = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      return res.granted;
     } catch {
       return false;
     }
@@ -255,10 +227,12 @@ export class WhisperSpeechService implements SpeechService {
 
   /**
    * Starts microphone recording in push-to-talk style.
+   * Uses expo-speech-recognition native AudioRecord with persist: true to capture 16 kHz mono 16-bit PCM WAV.
    */
   async startListening(callbacks: SpeechServiceCallbacks): Promise<void> {
     this.callbacks = callbacks;
     this.listenStartTime = Date.now();
+    this.recordedAudioUri = null;
 
     // 1. Check permissions
     const permitted = await this.requestPermissions();
@@ -284,27 +258,38 @@ export class WhisperSpeechService implements SpeechService {
     }
 
     try {
-      // Configure audio session
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      this.audioEndSubscription?.remove();
+      this.audioEndSubscription = null;
+      this.errorSubscription?.remove();
+      this.errorSubscription = null;
+
+      // Subscribe to audioend to receive the output WAV URI when stopped
+      this.audioEndSubscription = ExpoSpeechRecognitionModule.addListener('audioend', (event: any) => {
+        if (event?.uri) {
+          this.recordedAudioUri = event.uri;
+        }
       });
 
-      // Abort any existing recording
-      if (this.recording) {
-        try {
-          await this.recording.stopAndUnloadAsync();
-        } catch {
-          // Ignore
+      this.errorSubscription = ExpoSpeechRecognitionModule.addListener('error', (event: any) => {
+        if (this.state === 'listening') {
+          this.setState('error');
+          this.callbacks.onError?.(
+            event?.message || 'Recording error',
+            event?.error || 'AUDIO_CAPTURE_ERROR'
+          );
         }
-        this.recording = null;
-      }
+      });
 
-      const newRecording = new Audio.Recording();
-      await newRecording.prepareToRecordAsync(WHISPER_RECORDING_OPTIONS);
-      await newRecording.startAsync();
+      // Start recording with persist: true (native AudioRecord records 16 kHz mono 16-bit PCM WAV)
+      ExpoSpeechRecognitionModule.start({
+        lang: 'en-US',
+        interimResults: false,
+        continuous: false,
+        recordingOptions: {
+          persist: true,
+        },
+      });
 
-      this.recording = newRecording;
       this.setState('listening');
     } catch (err: any) {
       this.setState('error');
@@ -319,20 +304,50 @@ export class WhisperSpeechService implements SpeechService {
    * Stops recording and initiates Whisper offline transcription.
    */
   async stopListening(): Promise<void> {
-    if (!this.recording) {
+    if (this.state !== 'listening') {
       this.setState('idle');
       return;
     }
 
-    const rec = this.recording;
-    this.recording = null;
+    this.setState('processing');
 
     try {
-      // Transition state to processing ("Understanding...")
-      this.setState('processing');
+      // Wait for audioend event to yield the WAV file URI
+      const audioUri = await new Promise<string | null>((resolve) => {
+        let finished = false;
 
-      await rec.stopAndUnloadAsync();
-      const audioUri = rec.getURI();
+        if (this.recordedAudioUri) {
+          return resolve(this.recordedAudioUri);
+        }
+
+        const timer = setTimeout(() => {
+          if (!finished) {
+            finished = true;
+            resolve(this.recordedAudioUri || null);
+          }
+        }, 4000);
+
+        const sub = ExpoSpeechRecognitionModule.addListener('audioend', (event: any) => {
+          sub?.remove();
+          clearTimeout(timer);
+          if (!finished) {
+            finished = true;
+            this.recordedAudioUri = event?.uri || null;
+            resolve(this.recordedAudioUri);
+          }
+        });
+
+        try {
+          ExpoSpeechRecognitionModule.stop();
+        } catch {
+          // Ignore stop error
+        }
+      });
+
+      this.audioEndSubscription?.remove();
+      this.audioEndSubscription = null;
+      this.errorSubscription?.remove();
+      this.errorSubscription = null;
 
       if (!audioUri) {
         this.setState('idle');
@@ -378,6 +393,15 @@ export class WhisperSpeechService implements SpeechService {
 
       this.setState('idle');
 
+      // Delete temporary audio recording file to conserve storage
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const FileSystem = require('expo-file-system/legacy');
+        await FileSystem.deleteAsync(audioUri, { idempotent: true });
+      } catch {
+        // Ignore file delete error
+      }
+
       if (!rawText) {
         this.callbacks.onError?.("Couldn't hear anything clearly. Please try again.", 'NO_SPEECH');
       } else {
@@ -401,6 +425,17 @@ export class WhisperSpeechService implements SpeechService {
    * Aborts listening or in-flight transcription immediately.
    */
   async abort(): Promise<void> {
+    this.audioEndSubscription?.remove();
+    this.audioEndSubscription = null;
+    this.errorSubscription?.remove();
+    this.errorSubscription = null;
+
+    try {
+      ExpoSpeechRecognitionModule.abort();
+    } catch {
+      // Ignore
+    }
+
     if (this.activeTranscriptionStop) {
       try {
         await this.activeTranscriptionStop();
@@ -408,15 +443,6 @@ export class WhisperSpeechService implements SpeechService {
         // Ignore
       }
       this.activeTranscriptionStop = null;
-    }
-
-    if (this.recording) {
-      try {
-        await this.recording.stopAndUnloadAsync();
-      } catch {
-        // Ignore
-      }
-      this.recording = null;
     }
 
     this.setState('idle');

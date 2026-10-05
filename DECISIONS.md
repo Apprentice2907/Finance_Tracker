@@ -64,3 +64,23 @@ This document records key technical decisions, assumptions, and deviations from 
 - **EAS Build Architecture**:
   - `development` profile: Produces an internal Android APK with `expo-dev-client` for live debugging of native modules (`expo-speech-recognition`, `expo-sqlite`, `expo-haptics`).
   - `preview` profile: Produces a standalone standalone release-ready APK for direct distribution and sideloading on physical devices.
+
+## 6. Native Audio Capture & SDK 57 Migration (Removal of expo-av)
+- **Removal of `expo-av`**:
+  - `expo-av` was removed in Expo SDK 55 and is incompatible with Expo SDK 57 (React Native 0.86 / New Architecture). At startup, `libexpo-av.so` failed to link native symbols, throwing `java.lang.UnsatisfiedLinkError: cannot locate symbol ... referenced by libexpo-av.so`.
+  - `expo-av` was completely removed: uninstalled from dependencies, removed from `app.json` plugins, and removed from all imports and documentation across the repository.
+- **Whisper Audio Capture Architecture**:
+  - Whisper (`whisper.rn`) requires 16 kHz mono 16-bit PCM WAV audio.
+  - We evaluated the audio recording options according to the specification hierarchy:
+    1. **Option (a) `expo-speech-recognition` audio persistence (CHOSEN)**:
+       - Inspection of `node_modules/expo-speech-recognition/android/src/main/java/net/alextao/expo/speechrecognition/ExpoAudioRecorder.kt` confirms Android's native `AudioRecord` is hardcoded to:
+         - `sampleRateInHz = 16000` (16 kHz)
+         - `channelConfig = AudioFormat.CHANNEL_IN_MONO` (mono)
+         - `audioFormat = AudioFormat.ENCODING_PCM_16BIT` (16-bit PCM)
+       - When passing `recordingOptions: { persist: true }` to `ExpoSpeechRecognitionModule.start(...)`, `ExpoAudioRecorder` streams PCM audio into a standard RIFF/WAVE `.wav` file in the app cache directory, emitting an `audioend` event with `{ uri: "file:///..." }`.
+       - Because `expo-speech-recognition` is already installed, audited, and verified for Expo SDK 57 and New Architecture, this option requires **zero additional native dependencies**, eliminates ABI conflict risks, and provides exact bit-for-bit compatibility with `whisper.rn`.
+       - The recorded `.wav` file is passed directly to `whisperContext.transcribe(audioUri, ...)`. Once transcription finishes (or on error), the temporary cache file is cleaned up via `expo-file-system/legacy` to conserve device storage.
+    2. **Option (b) `@fugood/react-native-audio-pcm-stream` (rejected)**:
+       - Would add an extra third-party native dependency requiring additional build maintenance and potential New Architecture peer-dependency frictions.
+    3. **Option (c) `expo-audio` (rejected)**:
+       - `expo-audio` records compressed formats (AAC/M4A) via `MediaRecorder` by default on Android, which `whisper.rn` cannot decode without external transcoders.
