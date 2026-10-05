@@ -18,3 +18,4 @@ export * from './TransactionRow';
 export * from './GlassButton';
 export * from './Keypad';
 export * from './FloatingNav';
+export * from './charts';

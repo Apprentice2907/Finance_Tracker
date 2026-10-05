@@ -34,6 +34,10 @@ import {
   GlassButton,
   Keypad,
   FloatingNav,
+  DonutChart,
+  BarChart,
+  CashflowLineChart,
+  SemicircleGauge,
   type NavTabKey,
 } from '../src/ui/kit';
 import { nightColors, pocketColors, categoryColors, spacing, typography, radii } from '../src/ui/tokens';
@@ -510,7 +514,65 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
         />
       </Card>
 
-      {/* ── 18. BottomSheet ──────────────────────────────────── */}
+      {/* ── 18. Charts ───────────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>Charts (SVG)</Text>
+        <Text style={dyn.sectionSub}>Donut, Bar, CashflowLine, SemicircleGauge</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border, alignItems: 'center' }}>
+        <Text style={[dyn.stateLabel, { alignSelf: 'flex-start', marginBottom: spacing.sm }]}>DonutChart</Text>
+        <DonutChart
+          size={180}
+          segments={[
+            { key: 'food', label: 'Food', amountPaise: 400000, color: categoryColors.orange },
+            { key: 'transport', label: 'Transport', amountPaise: 250000, color: categoryColors.blue },
+            { key: 'shopping', label: 'Shopping', amountPaise: 150000, color: categoryColors.violet },
+          ]}
+        />
+        <View style={dyn.divider} />
+        
+        <Text style={[dyn.stateLabel, { alignSelf: 'flex-start', marginBottom: spacing.sm }]}>BarChart</Text>
+        <BarChart
+          width={300}
+          height={160}
+          data={[
+            { key: 'm', label: 'Mon', amountPaise: 120000 },
+            { key: 't', label: 'Tue', amountPaise: 55000 },
+            { key: 'w', label: 'Wed', amountPaise: 240000 },
+            { key: 'th', label: 'Thu', amountPaise: 40000 },
+            { key: 'f', label: 'Fri', amountPaise: 380000 },
+            { key: 'sa', label: 'Sat', amountPaise: 190000 },
+            { key: 'su', label: 'Sun', amountPaise: 0 },
+          ]}
+        />
+        <View style={dyn.divider} />
+        
+        <Text style={[dyn.stateLabel, { alignSelf: 'flex-start', marginBottom: spacing.sm }]}>CashflowLineChart</Text>
+        <CashflowLineChart
+          width={300}
+          height={160}
+          data={[
+            { key: '1', label: '1', amountPaise: 15000 },
+            { key: '2', label: '2', amountPaise: 22000 },
+            { key: '3', label: '3', amountPaise: 18000 },
+            { key: '4', label: '4', amountPaise: 30000, projected: true },
+            { key: '5', label: '5', amountPaise: 25000, projected: true },
+          ]}
+        />
+        <View style={dyn.divider} />
+        
+        <Text style={[dyn.stateLabel, { alignSelf: 'flex-start', marginBottom: spacing.sm }]}>SemicircleGauge</Text>
+        <SemicircleGauge
+          size={240}
+          centerSubLabel="Budget Used"
+          segments={[
+            { key: 'spent', label: 'Spent', amountPaise: 60000, color: C.expense },
+            { key: 'planned', label: 'Planned', amountPaise: 25000, color: C.warning },
+          ]}
+        />
+      </Card>
+
+      {/* ── 19. BottomSheet ──────────────────────────────────── */}
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
         <Text style={dyn.sectionTitle}>BottomSheet</Text>
         <Text style={dyn.sectionSub}>Slide-up with drag handle, title, backdrop dismissal</Text>
