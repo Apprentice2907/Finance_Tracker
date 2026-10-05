@@ -131,3 +131,57 @@ Want to tweak Wini? Here is where to look:
 3. **What is soft delete?**
    When you delete an item, Wini sets `deleted_at = current_timestamp` instead of deleting the row.
    That is how the **Undo** button works!
+
+---
+
+## 🎨 How to reskin the app: change tokens.ts, then these components
+
+Wini v2 separates all visual design tokens and presentation components from screens and business logic.
+To give Wini a brand-new look and feel (or switch between light/dark themes), follow this two-step process:
+
+### Step 1: Change Design Tokens (`src/ui/tokens.ts`)
+All primitive styling values live in `src/ui/tokens.ts`. Changing a value here ripples across the entire app instantly:
+- **`colors`**:
+  - Backgrounds: `background` (canvas), `surface` (cards), `surfaceAlt` (sub-cards), `surfaceInput` (inputs).
+  - Brand & Accents: `primary` (royal blue), `accentPurple` (insights), `chartBlueStart`/`chartBlueEnd`.
+  - Financial States: `income` (emerald green), `expense` (coral pink), `danger` (ruby red), `warning` (amber).
+  - Neutrals: `text` (high-contrast text), `textSecondary`, `muted` (subtitles/placeholders), `border`.
+- **`typography`**:
+  - Font families: `displaySerif` (DM Serif Display for numbers & headers), `body` (Inter regular), `bodySemiBold`, `bodyBold`.
+  - Font sizes & line heights: `sizeXs` (11px) up to `sizeHero` (40px).
+- **`spacing`**:
+  - Consistent 4px/8px grid: `none` (0), `xs` (4), `sm` (8), `md` (12), `lg` (16), `xl` (24), `xxl` (32), `xxxl` (48).
+- **`radii`**:
+  - Corner curves: `sm` (8), `md` (12), `lg` (16), `xl` (24), `round` (9999 for pills/buttons).
+- **`elevations`**:
+  - Cross-platform Android elevation and iOS shadow objects (`sm`, `md`, `lg`).
+- **`motion`**:
+  - Standard transition durations: `fast` (150ms), `normal` (250ms), `slow` (400ms).
+
+> **Enforced Rule:** Screen files inside `app/` are forbidden from containing hard-coded hex colors (e.g. `#FFFFFF` or `#0A0F1E`). An automated unit test (`src/ui/__tests__/rawColorCheck.test.ts`) verifies this on every `npm test`. Always reference `colors.<token>`.
+
+### Step 2: Customize Shared UI Kit Components (`src/ui/kit/`)
+Wini's visual building blocks take only props and tokens—they contain zero business logic. When modifying layouts or borders, edit these components:
+
+| Component | File | What it controls |
+|---|---|---|
+| `<Screen />` | `src/ui/kit/Screen.tsx` | SafeArea bounds, status bar theme, and optional ScrollView wrapper |
+| `<Card />` | `src/ui/kit/Card.tsx` | Container variants (`surface`, `elevated`, `glass`, `outlined`) & paddings |
+| `<Button />` | `src/ui/kit/Button.tsx` | Actions (`primary`, `secondary`, `ghost`, `danger`), sizes (`sm`, `md`, `lg`), loading spinner & disabled states |
+| `<Chip />` | `src/ui/kit/Chip.tsx` | Category tags, filter pills, custom tint badges, and selected states |
+| `<ListRow />` | `src/ui/kit/ListRow.tsx` | List items with left icons/emojis, title, subtitle, right value, and chevron |
+| `<SectionHeader />` | `src/ui/kit/SectionHeader.tsx` | Screen section titles, optional subtitles, and action links ("See All", "Edit") |
+| `<AmountText />` | `src/ui/kit/AmountText.tsx` | Indian numbering system (`₹1,50,000`), income (+)/expense (−) color styling, and typography sizes |
+| `<BottomSheet />` | `src/ui/kit/BottomSheet.tsx` | Accessible slide-up modal with drag handle, title bar, and touch backdrop dismissal |
+| `<EmptyState />` | `src/ui/kit/EmptyState.tsx` | Zero-state illustrations with title, description, and primary call-to-action |
+| `<ErrorBanner />` | `src/ui/kit/ErrorBanner.tsx` | Actionable error alert with retry and dismiss handlers |
+| `<Skeleton />` | `src/ui/kit/Skeleton.tsx` | Animated pulsing loading placeholders for data loading |
+| `<SegmentedControl />` | `src/ui/kit/SegmentedControl.tsx` | Period switches (`Week \| Month \| Quarter \| Year`) and multi-tab toggles |
+| `<IconButton />` | `src/ui/kit/IconButton.tsx` | 48px touch targets for navigation icons, mic triggers, and action bar buttons |
+
+### Step 3: Verify in the Component Gallery
+To inspect all components and states at once without navigating multiple screens:
+1. Open Wini on your device or in development mode.
+2. Go to **Settings** → scroll to the **Developer** section → tap **Component Gallery**.
+3. View every component across all states: default, pressed, disabled, loading, empty, and error.
+

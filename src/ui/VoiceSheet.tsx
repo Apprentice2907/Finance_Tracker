@@ -255,7 +255,7 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
                   onPress={handleMicPress}
                   activeOpacity={0.8}
                 >
-                  <MicIcon size={36} color="#FFFFFF" />
+                  <MicIcon size={36} color={colors.white} />
                 </TouchableOpacity>
               </View>
 
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitTypeText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 15,
     fontWeight: '700',
   },

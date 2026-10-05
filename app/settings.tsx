@@ -460,7 +460,7 @@ function SettingsContent() {
             onPress={() => router.push('/voice-lab')}
             activeOpacity={0.8}
           >
-            <MicIcon size={16} color="#FFFFFF" />
+            <MicIcon size={16} color={colors.white} />
             <Text style={styles.testVoiceBtnText}>Test Voice in Voice Lab</Text>
           </TouchableOpacity>
 
@@ -478,7 +478,7 @@ function SettingsContent() {
                 value={keepVoiceLog}
                 onValueChange={handleToggleKeepVoiceLog}
                 trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#FFFFFF"
+                thumbColor={colors.white}
               />
             </View>
 
@@ -494,7 +494,7 @@ function SettingsContent() {
                 value={preferOnDevice}
                 onValueChange={handleTogglePreferOnDevice}
                 trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#FFFFFF"
+                thumbColor={colors.white}
               />
             </View>
 
@@ -590,7 +590,7 @@ function SettingsContent() {
                 disabled={isExporting}
                 activeOpacity={0.8}
               >
-                <ExportIcon size={16} color="#FFFFFF" />
+                <ExportIcon size={16} color={colors.white} />
                 <Text style={styles.backupBtnPrimaryText}>
                   {isExporting ? 'Exporting...' : 'Export Backup'}
                 </Text>
@@ -698,6 +698,26 @@ function SettingsContent() {
                 />
               </View>
             ))}
+          </View>
+        </View>
+
+        {/* Section: Developer */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Developer</Text>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.devRow}
+              onPress={() => router.push('/gallery' as any)}
+              activeOpacity={0.8}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.devRowTitle}>Component Gallery</Text>
+                <Text style={styles.devRowSubtitle}>
+                  Preview all UI kit design tokens &amp; components in all states
+                </Text>
+              </View>
+              <Text style={styles.devChevron}>›</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -858,7 +878,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   backupBtnPrimaryText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1286,7 +1306,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
   },
   downloadModelBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1317,9 +1337,31 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   testVoiceBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 14,
     fontWeight: '700',
+  },
+  devRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+  },
+  devRowTitle: {
+    color: colors.text,
+    fontSize: typography.sizeBase,
+    fontWeight: '600',
+    fontFamily: typography.bodyMedium,
+  },
+  devRowSubtitle: {
+    color: colors.muted,
+    fontSize: typography.sizeSm,
+    marginTop: 2,
+    fontFamily: typography.body,
+  },
+  devChevron: {
+    color: colors.muted,
+    fontSize: typography.sizeXl,
   },
   langModeWrap: {
     marginTop: spacing.md,

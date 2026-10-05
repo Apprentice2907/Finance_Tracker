@@ -302,7 +302,7 @@ function VoiceLabContent() {
               onPress={handleStartRecording}
               activeOpacity={0.8}
             >
-              <MicIcon size={28} color="#FFFFFF" />
+              <MicIcon size={28} color={colors.white} />
             </TouchableOpacity>
             <Text style={styles.micStateText}>
               {speechState === 'listening'
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.income,
   },
   saveLogBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 14,
     fontWeight: '700',
   },

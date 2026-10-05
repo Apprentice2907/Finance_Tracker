@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   typePillTextActive: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '700',
   },
   categoryFilterScroll: {

@@ -529,7 +529,7 @@ function HomeContent() {
               activeOpacity={0.8}
             >
               <View style={styles.btnIconWrapPrimary}>
-                <MicIcon size={15} color="#FFFFFF" />
+                <MicIcon size={15} color={colors.white} />
               </View>
               <Text style={styles.actionBtnText}>Voice Add</Text>
             </TouchableOpacity>
@@ -566,7 +566,7 @@ function HomeContent() {
             activeOpacity={0.8}
           >
             <View style={styles.btnIconWrapInsights}>
-              <ChartIcon size={15} color="#9D8CFF" />
+              <ChartIcon size={15} color={colors.accentPurple} />
             </View>
             <Text style={styles.actionBtnText}>Insights</Text>
           </TouchableOpacity>
@@ -656,7 +656,7 @@ function HomeContent() {
             activeOpacity={0.85}
             accessibilityLabel="Record voice expense"
           >
-            <MicIcon size={30} color="#FFFFFF" />
+            <MicIcon size={30} color={colors.white} />
           </TouchableOpacity>
         </View>
       )}
@@ -757,14 +757,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     zIndex: 9999,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 10,
     alignItems: 'center',
   },
   bannerText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -814,14 +814,14 @@ const styles = StyleSheet.create({
   },
   peekCardBack: {
     top: 0,
-    backgroundColor: '#0E172E',
+    backgroundColor: colors.surfaceAlt,
     borderColor: 'rgba(46, 204, 143, 0.25)',
     borderWidth: 1,
     height: 76,
   },
   peekCardMiddle: {
     top: 14,
-    backgroundColor: '#131F3D',
+    backgroundColor: colors.surfaceInput,
     borderColor: 'rgba(59, 110, 245, 0.25)',
     borderWidth: 1,
     height: 76,
@@ -849,7 +849,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: radii.xl,
     padding: spacing.xl,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.45,
     shadowRadius: 18,
@@ -1141,7 +1141,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOpacity: 0.4,
     shadowRadius: 10,
     elevation: 10,

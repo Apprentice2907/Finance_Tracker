@@ -95,6 +95,12 @@ export default function RootLayout() {
               href: null,
             }}
           />
+          <Tabs.Screen
+            name="gallery"
+            options={{
+              href: null,
+            }}
+          />
         </Tabs>
       </View>
     </ErrorBoundary>

@@ -184,10 +184,10 @@ function InsightsContent() {
                   <Defs>
                     <LinearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
                       <Stop offset="0%" stopColor={colors.primary} stopOpacity="1" />
-                      <Stop offset="100%" stopColor="#1B3E9E" stopOpacity="0.8" />
+                      <Stop offset="100%" stopColor={colors.chartBlueEnd} stopOpacity="0.8" />
                     </LinearGradient>
                     <LinearGradient id="activeBarGradient" x1="0" y1="0" x2="0" y2="1">
-                      <Stop offset="0%" stopColor="#6C97FF" stopOpacity="1" />
+                      <Stop offset="0%" stopColor={colors.chartBlueStart} stopOpacity="1" />
                       <Stop offset="100%" stopColor={colors.primary} stopOpacity="1" />
                     </LinearGradient>
                   </Defs>
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bannerText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   toggleTextActive: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '700',
   },
   loadingContainer: {

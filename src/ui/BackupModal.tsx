@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radii.xl,
     padding: spacing.xl,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOpacity: 0.5,
     shadowRadius: 16,
     elevation: 12,
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   btnMergeText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 14,
     fontWeight: '700',
   },

@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   typeTabTextActive: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '700',
   },
   amountContainer: {
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '700',
     fontSize: 15,
   },
