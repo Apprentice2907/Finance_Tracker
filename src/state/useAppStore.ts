@@ -215,8 +215,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (previousMonthTotals.totalExpensePaise > 0) {
         const diff = currentMonthTotals.totalExpensePaise - previousMonthTotals.totalExpensePaise;
         changeVsLastMonthPercent = Math.round((diff / previousMonthTotals.totalExpensePaise) * 100);
-      } else if (currentMonthTotals.totalExpensePaise > 0) {
-        changeVsLastMonthPercent = 100;
       }
 
       set({

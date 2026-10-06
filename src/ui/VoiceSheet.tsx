@@ -22,7 +22,10 @@ import {
   Animated,
   Platform,
   KeyboardAvoidingView,
+  useWindowDimensions,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from './tokens';
 import { MicIcon } from './icons';
 import { SpeechService, SpeechState } from '../speech/SpeechService';
@@ -48,6 +51,10 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
   onTranscriptReady,
   speechService,
 }) => {
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const maxSheetHeight = height - insets.top - 24;
+
   const { preferOnDevice, keywords, voiceEngine, whisperModel, categories, showBanner } = useAppStore();
   const [speechState, setSpeechState] = useState<SpeechState>('idle');
   const [partialTranscript, setPartialTranscript] = useState('');
@@ -212,7 +219,11 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
       >
-        <View style={styles.sheet}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={StyleSheet.absoluteFill} />
+        </TouchableWithoutFeedback>
+
+        <View style={[styles.sheet, { maxHeight: maxSheetHeight, paddingBottom: Math.max(insets.bottom, spacing.xl) }]}>
           <View style={styles.handleBar} />
 
           {/* Header */}
@@ -287,7 +298,7 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
                   setIsTypingMode(true);
                 }}
               >
-                <Text style={styles.typeInsteadText}>⌨️ Type instead</Text>
+                <Text style={styles.typeInsteadText}>Type instead</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -312,7 +323,7 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
                   style={styles.switchBackMic}
                   onPress={() => setIsTypingMode(false)}
                 >
-                  <Text style={styles.switchBackMicText}>🎤 Use Voice</Text>
+                  <Text style={styles.switchBackMicText}>Use Voice</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

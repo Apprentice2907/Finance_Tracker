@@ -34,11 +34,15 @@ import {
 import { BackupModal } from '../src/ui/BackupModal';
 import { defaultModelManager, WhisperModelId } from '../src/speech';
 
+import { Screen } from '../src/ui/kit';
+import { shouldShowBackupReminder, formatRelativeDate, pluralize } from '../src/utils/microcopy';
+
 function SettingsContent() {
   const router = useRouter();
   const {
     categories,
     keywords,
+    groupedTransactions,
     deleteKeyword,
     learnKeyword,
     showBanner,
@@ -106,13 +110,15 @@ function SettingsContent() {
         const repo = getRepository();
         const setting = await repo.getSetting('last_backup_at');
         setLastBackupAt(setting);
-        if (setting) {
-          const backupDate = new Date(setting);
-          const diffDays = (Date.now() - backupDate.getTime()) / (1000 * 60 * 60 * 24);
-          setIsBackupStale(diffDays > 14);
-        } else {
-          setIsBackupStale(true);
-        }
+        const allTxs = groupedTransactions.flatMap((g) => g.transactions);
+        const firstTx = allTxs.length > 0 ? allTxs[allTxs.length - 1] : null;
+
+        const isStale = shouldShowBackupReminder({
+          transactionCount: allTxs.length,
+          firstTransactionDate: firstTx?.occurred_on,
+          lastBackupDate: setting,
+        });
+        setIsBackupStale(isStale);
 
         const count = await repo.getVoiceLogCount();
         setVoiceLogCount(count);
@@ -259,16 +265,8 @@ function SettingsContent() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.bg }]}>
-      <StatusBar
-        barStyle={activeTheme === 'night' ? 'light-content' : 'dark-content'}
-        backgroundColor={themeColors.bg}
-      />
-      <ScrollView
-        style={[styles.container, { backgroundColor: themeColors.bg }]}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+    <Screen scrollable={true} hasTabBar={true} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: themeColors.text }]}>Settings ⚙️</Text>
@@ -833,7 +831,7 @@ function SettingsContent() {
             </Text>
           </View>
         </View>
-      </ScrollView>
+      </View>
 
       {/* Backup Preview & Restore Modal */}
       <BackupModal
@@ -846,7 +844,7 @@ function SettingsContent() {
           repo.getSetting('last_backup_at').then(setLastBackupAt);
         }}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 

@@ -15,8 +15,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
   BackHandler,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -27,6 +25,8 @@ import { TransactionWithCategory, TransactionType } from '../src/domain/types';
 import { SearchIcon, TrashIcon } from '../src/ui/icons';
 import { TransactionModal } from '../src/ui/TransactionModal';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
+import { Screen } from '../src/ui/kit';
+import { formatRelativeDate } from '../src/utils/microcopy';
 
 function HistoryContent() {
   const {
@@ -116,8 +116,7 @@ function HistoryContent() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <Screen scrollable={false} hasTabBar={true}>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
@@ -226,7 +225,7 @@ function HistoryContent() {
             filteredGroups.map((group) => (
               <View key={group.date} style={styles.dayGroup}>
                 <View style={styles.dayHeader}>
-                  <Text style={styles.dayDate}>{group.displayDate}</Text>
+                  <Text style={styles.dayDate}>{formatRelativeDate(group.date)}</Text>
                   {group.filteredExpense > 0 && (
                     <Text style={styles.dayTotal}>
                       Spent: {formatRupees(group.filteredExpense)}
@@ -326,7 +325,7 @@ function HistoryContent() {
           initialTransaction={editingTransaction}
         />
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 

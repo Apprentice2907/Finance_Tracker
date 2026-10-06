@@ -49,6 +49,8 @@ import { parseBestAlternative, ParseResult } from '../src/parser';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { useRouter } from 'expo-router';
 import { ExpoSpeechService } from '../src/speech/ExpoSpeechService';
+import { Screen } from '../src/ui/kit';
+import { formatRelativeDate, formatChange, pluralize } from '../src/utils/microcopy';
 
 function HomeContent() {
   const router = useRouter();
@@ -359,9 +361,7 @@ function HomeContent() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-
+    <Screen scrollable={true} hasTabBar={true} contentContainerStyle={styles.scrollContent}>
       {/* Floating Global Banner Notification */}
       {bannerMessage && (
         <View style={styles.banner}>
@@ -369,11 +369,7 @@ function HomeContent() {
         </View>
       )}
 
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -615,7 +611,7 @@ function HomeContent() {
                     {tx.note}
                   </Text>
                   <Text style={styles.txCategory}>
-                    {tx.category_name || 'General'} • {tx.occurred_on}
+                    {tx.category_name || 'General'} • {formatRelativeDate(tx.occurred_on)}
                     {tx.source === 'voice' && ' • 🎤'}
                     {tx.source === 'typed' && ' • ⌨️'}
                   </Text>
@@ -644,7 +640,7 @@ function HomeContent() {
             ))}
           </View>
         )}
-      </ScrollView>
+      </View>
 
       {/* Docked Centered Big Mic Button with Pulsating Outer Ring (hidden on web if unavailable) */}
       {!(Platform.OS === 'web' && !isSpeechAvailable) && (
@@ -723,7 +719,7 @@ function HomeContent() {
         initialTransaction={editingTransaction}
         defaultType={modalDefaultType}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 

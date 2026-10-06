@@ -20,14 +20,27 @@ import {
 } from 'react-native';
 import { radii, spacing } from '../tokens';
 
-export type TextureKey = 'aurora' | 'nebula' | 'cosmos' | 'ember' | 'midnight';
+export type TextureKey =
+  | 'aurora'
+  | 'nebula'
+  | 'cosmos'
+  | 'ember'
+  | 'midnight'
+  | 'cosmos-silk'
+  | 'cosmos-silk-dark'
+  | 'cosmos_silk'
+  | 'cosmos_silk_dark';
 
-export const TEXTURE_ASSETS: Record<TextureKey, any> = {
-  aurora: require('../../../assets/textures/aurora.jpg'),
-  nebula: require('../../../assets/textures/nebula.jpg'),
+export const TEXTURE_ASSETS: Record<string, any> = {
+  'cosmos-silk': require('../../../assets/textures/cosmos-silk.jpg'),
+  'cosmos-silk-dark': require('../../../assets/textures/cosmos-silk-dark.jpg'),
+  cosmos_silk: require('../../../assets/textures/cosmos-silk.jpg'),
+  cosmos_silk_dark: require('../../../assets/textures/cosmos-silk-dark.jpg'),
   cosmos: require('../../../assets/textures/cosmos.jpg'),
   ember: require('../../../assets/textures/ember.jpg'),
   midnight: require('../../../assets/textures/midnight.jpg'),
+  aurora: require('../../../assets/textures/cosmos.jpg'),
+  nebula: require('../../../assets/textures/midnight.jpg'),
 };
 
 export interface TexturedCardProps {

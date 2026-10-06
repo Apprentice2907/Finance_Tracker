@@ -16,13 +16,16 @@ import {
   ScrollView,
   StyleSheet,
   Platform,
+  useWindowDimensions,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { colors, radii, spacing, typography } from './tokens';
 import { Category, TransactionType } from '../domain/types';
 import { ParseResult } from '../parser';
 import { formatRupees } from '../domain/money';
-import { formatDisplayDate } from '../domain/dates';
+import { formatRelativeDate } from '../utils/microcopy';
 
 interface ConfirmSheetProps {
   visible: boolean;
@@ -63,6 +66,10 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
   onEdit,
   onClose,
 }) => {
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const maxSheetHeight = height - insets.top - 24;
+
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [userSelectedCategoryId, setUserSelectedCategoryId] = useState<string | null>(null);
@@ -163,7 +170,10 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={StyleSheet.absoluteFill} />
+        </TouchableWithoutFeedback>
+        <View style={[styles.sheet, { maxHeight: maxSheetHeight, paddingBottom: Math.max(insets.bottom, spacing.xl) }]}>
           {/* Handle bar */}
           <View style={styles.handleBar} />
 
@@ -246,7 +256,7 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
             <View style={[styles.summaryRow, { borderBottomWidth: 0 }]}>
               <Text style={styles.summaryLabel}>Date</Text>
               <Text style={styles.summaryValue}>
-                {formatDisplayDate(parsed.date)} ({parsed.date})
+                {formatRelativeDate(parsed.date)}
               </Text>
             </View>
           </View>

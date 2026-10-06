@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,7 +10,11 @@ import {
   Platform,
   ViewStyle,
   StyleProp,
+  ScrollView,
+  useWindowDimensions,
+  BackHandler,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radii, spacing, typography } from '../tokens';
 import { useTheme } from '../ThemeContext';
 
@@ -19,7 +23,9 @@ export interface BottomSheetProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  scrollable?: boolean;
 }
 
 export const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -27,9 +33,27 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   onClose,
   title,
   children,
+  footer,
   style,
+  scrollable = true,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+
+  // Android back button closes bottom sheet first
+  useEffect(() => {
+    if (!visible) return;
+    const backAction = () => {
+      onClose();
+      return true;
+    };
+    const handler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => handler.remove();
+  }, [visible, onClose]);
+
+  const maxSheetHeight = height - insets.top - 24;
+  const bottomPadding = Math.max(insets.bottom, spacing.md);
 
   return (
     <Modal
@@ -37,6 +61,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       transparent
       animationType="slide"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -52,6 +77,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             {
               backgroundColor: colors.surface,
               borderColor: colors.border,
+              maxHeight: maxSheetHeight,
+              paddingBottom: bottomPadding,
             },
             style,
           ]}
@@ -77,7 +104,22 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             </View>
           ) : null}
 
-          <View style={styles.content}>{children}</View>
+          {/* Body Content */}
+          {scrollable ? (
+            <ScrollView
+              style={styles.scrollBody}
+              contentContainerStyle={styles.content}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={styles.content}>{children}</View>
+          )}
+
+          {/* Optional Pinned Footer */}
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -102,8 +144,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    paddingBottom: spacing.xxl,
-    maxHeight: '90%',
+    overflow: 'hidden',
   },
   handleContainer: {
     alignItems: 'center',
@@ -133,9 +174,16 @@ const styles = StyleSheet.create({
     fontSize: typography.sizeBase,
     fontWeight: 'bold',
   },
+  scrollBody: {
+    flexShrink: 1,
+  },
   content: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  footer: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
   },
 });
-

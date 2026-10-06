@@ -25,6 +25,8 @@ import { colors, radii, spacing, typography } from '../src/ui/tokens';
 import { useAppStore, InsightsData } from '../src/state/useAppStore';
 import { formatRupees } from '../src/domain/money';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
+import { Screen } from '../src/ui/kit';
+import { pluralize, formatRelativeDate } from '../src/utils/microcopy';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -80,24 +82,18 @@ function InsightsContent() {
     : 100;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-
+    <Screen scrollable={true} hasTabBar={true} contentContainerStyle={styles.scrollContent}>
       {bannerMessage && (
         <View style={styles.banner}>
           <Text style={styles.bannerText}>{bannerMessage}</Text>
         </View>
       )}
 
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Insights 📊</Text>
+            <Text style={styles.title}>Insights</Text>
             <Text style={styles.subtitle}>Spending patterns & trends</Text>
           </View>
 
@@ -155,7 +151,11 @@ function InsightsContent() {
               </Text>
               <View style={styles.totalMetaRow}>
                 <Text style={styles.totalMeta}>
-                  {data.dailyBars.filter((b) => b.amountPaise > 0).length} active spend days
+                  {pluralize(
+                    data.dailyBars.filter((b) => b.amountPaise > 0).length,
+                    'active spend day',
+                    'active spend days'
+                  )}
                 </Text>
                 {data.totalIncomePaise > 0 && (
                   <Text style={styles.totalIncomeMeta}>
@@ -172,7 +172,7 @@ function InsightsContent() {
                 {selectedBarIndex !== null && data.dailyBars[selectedBarIndex] && (
                   <View style={styles.tooltipBadge}>
                     <Text style={styles.tooltipText}>
-                      {data.dailyBars[selectedBarIndex].date}:{' '}
+                      {formatRelativeDate(data.dailyBars[selectedBarIndex].date)}:{' '}
                       {formatRupees(data.dailyBars[selectedBarIndex].amountPaise)}
                     </Text>
                   </View>
@@ -330,8 +330,8 @@ function InsightsContent() {
             </View>
           </>
         )}
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 

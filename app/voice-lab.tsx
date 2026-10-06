@@ -32,6 +32,7 @@ import { VoiceLogEntry } from '../src/domain/types';
 import { formatRupees } from '../src/domain/money';
 import { MicIcon, TrashIcon } from '../src/ui/icons';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
+import { Screen } from '../src/ui/kit';
 
 function VoiceLabContent() {
   const router = useRouter();
@@ -214,13 +215,8 @@ function VoiceLabContent() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+    <Screen scrollable={true} hasTabBar={false} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.container}>
         {/* Navigation Header */}
         <View style={styles.topNav}>
           <TouchableOpacity
@@ -235,7 +231,7 @@ function VoiceLabContent() {
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Voice Lab 🔬</Text>
+          <Text style={styles.title}>Voice Lab</Text>
           <Text style={styles.subtitle}>
             Benchmark recognition accuracy, test alternative transcripts & inspect latency.
           </Text>
@@ -477,8 +473,8 @@ function VoiceLabContent() {
             </View>
           )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 

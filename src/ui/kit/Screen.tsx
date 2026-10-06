@@ -3,37 +3,58 @@ import {
   StyleSheet,
   View,
   ScrollView,
-  StatusBar,
   ViewStyle,
   StyleProp,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing } from '../tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../ThemeContext';
+import { spacing } from '../tokens';
 
 export interface ScreenProps {
   children: React.ReactNode;
   scrollable?: boolean;
+  hasTabBar?: boolean;
+  withTopInset?: boolean;
+  withBottomInset?: boolean;
+  safeAreaEdges?: ('top' | 'bottom' | 'left' | 'right')[];
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
-  safeAreaEdges?: ('top' | 'bottom' | 'left' | 'right')[];
-  statusBarStyle?: 'light-content' | 'dark-content';
 }
 
 export const Screen: React.FC<ScreenProps> = ({
   children,
   scrollable = false,
+  hasTabBar = true,
+  withTopInset = true,
+  withBottomInset = !hasTabBar,
   style,
   contentContainerStyle,
-  safeAreaEdges = ['top', 'bottom', 'left', 'right'],
-  statusBarStyle = 'light-content',
 }) => {
+  const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+
+  // Tab bar base (56) + insets.bottom + clearance for floating action / bottom elements
+  const tabBarHeight = 56 + Math.max(insets.bottom, 8);
+  const bottomScrollPadding = hasTabBar
+    ? tabBarHeight + spacing.xl + 20
+    : (withBottomInset ? insets.bottom + spacing.xl : spacing.xl);
+
+  const containerStyle: ViewStyle = {
+    flex: 1,
+    backgroundColor: colors.bg,
+    paddingTop: withTopInset ? insets.top : 0,
+    paddingBottom: (!hasTabBar && withBottomInset) ? insets.bottom : 0,
+  };
+
   return (
-    <SafeAreaView edges={safeAreaEdges} style={[styles.container, style]}>
-      <StatusBar barStyle={statusBarStyle} backgroundColor={colors.background} />
+    <View style={[containerStyle, style]}>
       {scrollable ? (
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
+          contentContainerStyle={[
+            { paddingBottom: bottomScrollPadding },
+            contentContainerStyle,
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -42,20 +63,13 @@ export const Screen: React.FC<ScreenProps> = ({
       ) : (
         <View style={[styles.content, contentContainerStyle]}>{children}</View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   scrollView: {
     flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing.xxxl,
   },
   content: {
     flex: 1,

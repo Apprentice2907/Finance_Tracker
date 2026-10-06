@@ -15,6 +15,7 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
 import * as SplashScreen from 'expo-splash-screen';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/ui/ThemeContext';
 import { WalletIcon, HistoryIcon, ChartIcon, SettingsIcon } from '../src/ui/icons';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
@@ -24,6 +25,9 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function NavigationShell() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom;
+  const tabBarHeight = 56 + Math.max(bottomInset, 8);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -31,13 +35,18 @@ function NavigationShell() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarStyle: [
-            styles.tabBar,
-            {
-              backgroundColor: colors.surface,
-              borderTopColor: colors.border,
-            },
-          ],
+          tabBarStyle: {
+            backgroundColor: colors.surface,
+            borderTopColor: colors.border,
+            borderTopWidth: 1,
+            height: tabBarHeight,
+            paddingBottom: Math.max(bottomInset, 6),
+            paddingTop: 6,
+          },
+          tabBarItemStyle: {
+            minHeight: 48,
+            justifyContent: 'center',
+          },
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.textMuted,
           tabBarShowLabel: true,
@@ -121,23 +130,19 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary fallbackTitle="Wini encountered a problem">
-      <ThemeProvider>
-        <NavigationShell />
-      </ThemeProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary fallbackTitle="Wini encountered a problem">
+        <ThemeProvider>
+          <NavigationShell />
+        </ThemeProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  tabBar: {
-    borderTopWidth: 1,
-    height: Platform.OS === 'ios' ? 88 : 64,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-    paddingTop: 8,
   },
   tabLabel: {
     fontSize: 11,

@@ -19,7 +19,10 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from './tokens';
 import { Category, TransactionWithCategory, TransactionType } from '../domain/types';
 import { rupeesToPaise, paiseToRupees } from '../domain/money';
@@ -47,6 +50,10 @@ const TransactionModalForm: React.FC<Omit<TransactionModalProps, 'visible'>> = (
   initialTransaction,
   defaultType = 'expense',
 }) => {
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const maxSheetHeight = height - insets.top - 24;
+
   const [type, setType] = useState<TransactionType>(
     initialTransaction ? initialTransaction.type : defaultType
   );
@@ -97,7 +104,7 @@ const TransactionModalForm: React.FC<Omit<TransactionModalProps, 'visible'>> = (
   };
 
   return (
-    <View style={styles.sheet}>
+    <View style={[styles.sheet, { maxHeight: maxSheetHeight, paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
       {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>
@@ -282,6 +289,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = (props) => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
       >
+        <TouchableWithoutFeedback onPress={props.onClose}>
+          <View style={StyleSheet.absoluteFill} />
+        </TouchableWithoutFeedback>
         <TransactionModalForm key={formKey} {...props} />
       </KeyboardAvoidingView>
     </Modal>

@@ -98,6 +98,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
           >
             <Ionicons name={tab.icon} size={20} color={iconColor} />
             <Text
+              numberOfLines={1}
               style={[
                 styles.tabLabel,
                 {
@@ -130,8 +131,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    minWidth: 54,
+    paddingHorizontal: spacing.xs,
+    minWidth: 48,
+    minHeight: 48,
   },
   tabLabel: {
     fontFamily: typography.bodyMedium,

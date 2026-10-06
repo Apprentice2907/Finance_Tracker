@@ -10,7 +10,8 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions, PixelRatio } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -58,6 +59,9 @@ import {
 function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
   const isDark = localTheme === 'night';
   const C = isDark ? nightColors : pocketColors;
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const fontScale = PixelRatio.getFontScale();
 
   const [sheetVisible, setSheetVisible] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState('month');
@@ -143,9 +147,22 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
       contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
     >
+      {/* ── 0. Device Info ──────────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>Device Info & Safe Areas</Text>
+        <Text style={dyn.sectionSub}>Screen dimensions, font scaling and safe insets</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <Text style={dyn.cardTitle}>Layout Diagnostics</Text>
+        <Text style={dyn.cardBody}>Window: {Math.round(width)} × {Math.round(height)} dp</Text>
+        <Text style={dyn.cardBody}>Font Scale: {fontScale.toFixed(2)}x</Text>
+        <Text style={dyn.cardBody}>
+          Safe Insets: Top {Math.round(insets.top)}px · Bottom {Math.round(insets.bottom)}px · Left {Math.round(insets.left)}px · Right {Math.round(insets.right)}px
+        </Text>
+      </Card>
 
       {/* ── 1. Colour Palette ───────────────────────────────── */}
-      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xs }}>
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs }}>
         <Text style={dyn.sectionTitle}>Design Tokens: Colors</Text>
         <Text style={dyn.sectionSub}>Semantic palette for the active theme</Text>
       </View>
@@ -598,6 +615,7 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
 export default function ComponentGalleryScreen() {
   const router = useRouter();
   const { activeTheme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Local override: start from the global active theme but let user flip locally
   const [localTheme, setLocalTheme] = useState<'night' | 'pocket'>(activeTheme);
@@ -606,7 +624,16 @@ export default function ComponentGalleryScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {/* ── Top Bar ────────────────────────────────────────── */}
-      <View style={[styles.topBar, { backgroundColor: C.surface, borderBottomColor: C.border }]}>
+      <View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: C.surface,
+            borderBottomColor: C.border,
+            paddingTop: Math.max(insets.top, spacing.md),
+          },
+        ]}
+      >
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={20} color={C.accent} />
           <Text style={[styles.backText, { color: C.accent }]}>Settings</Text>
