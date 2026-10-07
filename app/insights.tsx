@@ -21,11 +21,12 @@ import {
 } from 'react-native';
 import Svg, { Rect, Line, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing, typography } from '../src/ui/tokens';
 import { useAppStore, InsightsData } from '../src/state/useAppStore';
 import { formatRupees } from '../src/domain/money';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
-import { Screen } from '../src/ui/kit';
+import { Screen, CategoryIcon } from '../src/ui/kit';
 import { pluralize, formatRelativeDate } from '../src/utils/microcopy';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -132,7 +133,7 @@ function InsightsContent() {
           </View>
         ) : !data || data.totalExpensePaise === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyEmoji}>🍃</Text>
+            <Ionicons name="sparkles-outline" size={40} color={colors.muted} />
             <Text style={styles.emptyTitle}>No expenses for this {period}</Text>
             <Text style={styles.emptyDesc}>
               Log transactions with your voice on Home to view spending charts, category
@@ -303,7 +304,7 @@ function InsightsContent() {
                   <View key={cat.categoryId} style={styles.catRow}>
                     <View style={styles.catTopLine}>
                       <View style={styles.catNameWrap}>
-                        <Text style={styles.catEmoji}>{cat.emoji || '✨'}</Text>
+                        <CategoryIcon name={cat.icon} color={cat.color} size={18} variant="plain" />
                         <Text style={styles.catName}>{cat.name}</Text>
                       </View>
                       <View style={styles.catAmountWrap}>

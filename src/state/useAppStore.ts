@@ -34,6 +34,7 @@ import {
 export interface KeywordWithCategory extends KeywordMapEntry {
   category_name?: string;
   category_emoji?: string;
+  category_icon?: string;
   category_color?: string;
 }
 
@@ -91,6 +92,7 @@ export interface InsightsData {
     categoryId: string;
     name: string;
     emoji: string;
+    icon?: string;
     color: string;
     amountPaise: number;
     percentage: number;
@@ -167,6 +169,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           ...kw,
           category_name: cat?.name,
           category_emoji: cat?.emoji,
+          category_icon: cat?.icon,
           category_color: cat?.color,
         };
       });
@@ -298,6 +301,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       categoryId: c.category_id,
       name: c.category_name,
       emoji: c.category_emoji,
+      icon: c.category_icon,
       color: c.category_color,
       amountPaise: c.total_paise,
       percentage: totalExpense > 0 ? Math.round((c.total_paise / totalExpense) * 100) : 0,

@@ -10,6 +10,7 @@
 
 import React, { Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing } from './tokens';
 
 interface Props {
@@ -47,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <View style={styles.container}>
           <View style={styles.card}>
-            <Text style={styles.emoji}>⚠️</Text>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.expense} style={styles.emoji} />
             <Text style={styles.title}>
               {this.props.fallbackTitle || 'Something went wrong'}
             </Text>

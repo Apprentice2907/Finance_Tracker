@@ -9,6 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen, Card, Button, SectionHeader, AmountText } from '../src/ui/kit';
 import { colors, spacing, typography, radii } from '../src/ui/tokens';
 import { WalletIcon, PlusIcon } from '../src/ui/icons';
@@ -88,7 +89,7 @@ export default function AccountsScreen() {
       {onlyHasCash && !loading && (
         <Card variant="elevated" style={styles.promptCard}>
           <View style={styles.promptHeader}>
-            <Text style={styles.promptEmoji}>🏦</Text>
+            <Ionicons name="business-outline" size={28} color={colors.accent} />
             <View style={styles.promptTextWrap}>
               <Text style={styles.promptTitle}>Add your accounts</Text>
               <Text style={styles.promptDescription}>

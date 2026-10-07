@@ -44,6 +44,8 @@ import {
   getPreviousMonthRange,
   getDateRangeList,
 } from '../domain/dates';
+import { mapEmojiOrNameToIcon } from '../domain/categories';
+
 import { formatRupees } from '../domain/money';
 
 /**
@@ -211,7 +213,7 @@ export class Repository {
 
   async getTransaction(id: string): Promise<TransactionWithCategory | null> {
     const row = await this.db.getFirstAsync<any>(
-      `SELECT t.*, c.name as category_name, c.emoji as category_emoji, c.color as category_color, a.name as account_name
+      `SELECT t.*, c.name as category_name, c.emoji as category_emoji, c.icon as category_icon, c.color as category_color, a.name as account_name
        FROM transactions t
        LEFT JOIN categories c ON t.category_id = c.id
        LEFT JOIN accounts a ON t.account_id = a.id
@@ -233,12 +235,13 @@ export class Repository {
     endDate?: string;
   }): Promise<TransactionWithCategory[]> {
     let sql = `
-      SELECT t.*, c.name as category_name, c.emoji as category_emoji, c.color as category_color, a.name as account_name
+      SELECT t.*, c.name as category_name, c.emoji as category_emoji, c.icon as category_icon, c.color as category_color, a.name as account_name
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN accounts a ON t.account_id = a.id
       WHERE t.deleted_at IS NULL
     `;
+
     const params: any[] = [];
 
     if (options?.categoryId) {
@@ -370,6 +373,7 @@ export class Repository {
       category_id: string;
       category_name: string;
       category_emoji: string;
+      category_icon?: string;
       category_color: string;
       total_paise: number;
       count: number;
@@ -378,6 +382,7 @@ export class Repository {
         t.category_id,
         c.name as category_name,
         c.emoji as category_emoji,
+        c.icon as category_icon,
         c.color as category_color,
         SUM(t.amount_paise) as total_paise,
         COUNT(t.id) as count
@@ -431,17 +436,20 @@ export class Repository {
     const now = new Date().toISOString();
     const sortOrder = input.sort_order ?? 99;
     const isSystem = input.is_system ? 1 : 0;
+    const icon = input.icon ? input.icon.trim() : mapEmojiOrNameToIcon(input.emoji || input.name);
+    const emoji = input.emoji ? input.emoji.trim() : '✨';
 
     await this.db.runAsync(
-      `INSERT INTO categories (id, name, emoji, color, kind, sort_order, is_system, created_at, updated_at, deleted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
-      [id, input.name.trim(), input.emoji.trim(), input.color.trim(), input.kind, sortOrder, isSystem, now, now]
+      `INSERT INTO categories (id, name, emoji, icon, color, kind, sort_order, is_system, created_at, updated_at, deleted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
+      [id, input.name.trim(), emoji, icon, input.color.trim(), input.kind, sortOrder, isSystem, now, now]
     );
 
     return {
       id,
       name: input.name.trim(),
-      emoji: input.emoji.trim(),
+      emoji,
+      icon,
       color: input.color.trim(),
       kind: input.kind,
       sort_order: sortOrder,
@@ -457,23 +465,32 @@ export class Repository {
     if (!existing) throw new Error(`Category ${id} not found`);
 
     const now = new Date().toISOString();
+    const updatedIcon =
+      updates.icon !== undefined
+        ? updates.icon.trim()
+        : updates.emoji !== undefined
+        ? mapEmojiOrNameToIcon(updates.emoji)
+        : existing.icon || 'ellipsis-horizontal';
+
     const updated: Category = {
       ...existing,
       name: updates.name !== undefined ? updates.name.trim() : existing.name,
       emoji: updates.emoji !== undefined ? updates.emoji.trim() : existing.emoji,
+      icon: updatedIcon,
       color: updates.color !== undefined ? updates.color.trim() : existing.color,
       sort_order: updates.sort_order !== undefined ? updates.sort_order : existing.sort_order,
       updated_at: now,
     };
 
     await this.db.runAsync(
-      `UPDATE categories SET name = ?, emoji = ?, color = ?, sort_order = ?, updated_at = ?
+      `UPDATE categories SET name = ?, emoji = ?, icon = ?, color = ?, sort_order = ?, updated_at = ?
        WHERE id = ? AND deleted_at IS NULL;`,
-      [updated.name, updated.emoji, updated.color, updated.sort_order, updated.updated_at, id]
+      [updated.name, updated.emoji, updated.icon, updated.color, updated.sort_order, updated.updated_at, id]
     );
 
     return updated;
   }
+
 
   async deleteCategory(id: string, moveToCategoryId?: string): Promise<void> {
     const category = await this.getCategoryById(id);
@@ -1672,6 +1689,7 @@ export class Repository {
         category_id: string;
         category_name: string;
         category_emoji: string;
+        category_icon?: string;
         category_color: string;
         kind: CategoryKind;
         total_paise: number;
@@ -1707,7 +1725,8 @@ export class Repository {
         categoryTotalsMap.set(catId, {
           category_id: catId,
           category_name: t.category_name || 'Other',
-          category_emoji: t.category_emoji || '📦',
+          category_emoji: t.category_emoji || '✨',
+          category_icon: t.category_icon || 'ellipsis-horizontal',
           category_color: t.category_color || '#8E8E93',
           kind: t.type,
           total_paise: 0,
@@ -1718,6 +1737,7 @@ export class Repository {
       catEntry.total_paise += t.amount_paise;
       catEntry.count += 1;
     }
+
 
     const netPaise = totalIncomePaise - totalExpensePaise;
     const savingsRate =

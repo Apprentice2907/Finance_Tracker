@@ -7,6 +7,7 @@ import {
   ViewStyle,
   StyleProp,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing, typography } from '../tokens';
 
 export interface ErrorBannerProps {
@@ -25,7 +26,7 @@ export const ErrorBanner: React.FC<ErrorBannerProps> = ({
   return (
     <View style={[styles.container, style]}>
       <View style={styles.textContainer}>
-        <Text style={styles.icon}>⚠️</Text>
+        <Ionicons name="alert-circle-outline" size={18} color={colors.expense} style={styles.icon} />
         <Text style={styles.message}>{message}</Text>
       </View>
       <View style={styles.actions}>

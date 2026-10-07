@@ -49,7 +49,8 @@ import { parseBestAlternative, ParseResult } from '../src/parser';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { useRouter } from 'expo-router';
 import { ExpoSpeechService } from '../src/speech/ExpoSpeechService';
-import { Screen } from '../src/ui/kit';
+import { Ionicons } from '@expo/vector-icons';
+import { Screen, CategoryIcon } from '../src/ui/kit';
 import { formatRelativeDate, formatChange, pluralize } from '../src/utils/microcopy';
 
 function HomeContent() {
@@ -373,7 +374,7 @@ function HomeContent() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Wini Wallet 🛺</Text>
+            <Text style={styles.greeting}>Wini Wallet</Text>
             <Text style={styles.subGreeting}>Voice-first personal finance</Text>
           </View>
           <TouchableOpacity
@@ -582,7 +583,7 @@ function HomeContent() {
         {/* Recent Transactions List */}
         {recentTransactions.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>🍃</Text>
+            <Ionicons name="sparkles-outline" size={36} color={colors.muted} />
             <Text style={styles.emptyTitle}>No expenses yet</Text>
             <Text style={styles.emptySubtitle}>
               Tap the big mic below or &quot;Voice Add&quot; to speak your first expense.
@@ -603,7 +604,7 @@ function HomeContent() {
                     { backgroundColor: tx.category_color ? `${tx.category_color}22` : colors.elevated },
                   ]}
                 >
-                  <Text style={styles.txEmoji}>{tx.category_emoji || '✨'}</Text>
+                  <CategoryIcon name={tx.category_icon} color={tx.category_color} size={18} variant="plain" />
                 </View>
 
                 <View style={styles.txDetails}>
@@ -612,8 +613,8 @@ function HomeContent() {
                   </Text>
                   <Text style={styles.txCategory}>
                     {tx.category_name || 'General'} • {formatRelativeDate(tx.occurred_on)}
-                    {tx.source === 'voice' && ' • 🎤'}
-                    {tx.source === 'typed' && ' • ⌨️'}
+                    {tx.source === 'voice' && ' • Voice'}
+                    {tx.source === 'typed' && ' • Typed'}
                   </Text>
                 </View>
 

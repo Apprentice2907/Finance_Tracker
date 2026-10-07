@@ -135,7 +135,7 @@ describe('Wini v2 Safe Database Migration Tests', () => {
 
     // 4. VERIFY DATABASE VERSION
     const versionRow = await adapter.getFirstAsync<{ user_version: number }>('PRAGMA user_version;');
-    expect(versionRow?.user_version).toBe(4);
+    expect(versionRow?.user_version).toBe(5);
 
     // 5. VERIFY SNAPSHOT TABLES DROPPED ON SUCCESS
     const snapshotTables = await adapter.getAllAsync<any>(
@@ -164,7 +164,7 @@ describe('Wini v2 Safe Database Migration Tests', () => {
       expect(post.account_id).toBeNull();
     }
 
-    // 7. VERIFY ZERO DATA LOSS ON CATEGORIES AND is_system APPLIED
+    // 7. VERIFY ZERO DATA LOSS ON CATEGORIES AND is_system & icon BACKFILLED
     const postCatRows = await adapter.getAllAsync<any>('SELECT * FROM categories ORDER BY id ASC;');
     expect(postCatRows.length).toBe(4);
 
@@ -175,6 +175,16 @@ describe('Wini v2 Safe Database Migration Tests', () => {
         expect(cat.is_system).toBe(0);
       }
     }
+
+    // Verify icon backfilling from emojis
+    const foodCat = postCatRows.find((c) => c.id === 'cat_food');
+    expect(foodCat?.icon).toBe('restaurant-outline');
+    const transportCat = postCatRows.find((c) => c.id === 'cat_transport');
+    expect(transportCat?.icon).toBe('car-outline');
+    const incomeCat = postCatRows.find((c) => c.id === 'cat_income');
+    expect(incomeCat?.icon).toBe('trending-up-outline');
+    const otherCat = postCatRows.find((c) => c.id === 'cat_other');
+    expect(otherCat?.icon).toBe('ellipsis-horizontal');
 
     // 8. VERIFY NEW TABLES CREATED & ONLY CASH SEEDED (NEVER SEED BANK)
     const accounts = await adapter.getAllAsync<any>('SELECT * FROM accounts ORDER BY sort_order ASC;');
@@ -211,7 +221,7 @@ describe('Wini v2 Safe Database Migration Tests', () => {
     // 10. VERIFY IDEMPOTENCY: Re-running migration produces no errors and leaves data intact
     await migrateDatabase(adapter);
     const postReRunVersion = await adapter.getFirstAsync<{ user_version: number }>('PRAGMA user_version;');
-    expect(postReRunVersion?.user_version).toBe(4);
+    expect(postReRunVersion?.user_version).toBe(5);
     const postReRunTxs = await adapter.getAllAsync<any>('SELECT * FROM transactions;');
     expect(postReRunTxs.length).toBe(5);
 
@@ -232,6 +242,16 @@ describe('Wini v2 Safe Database Migration Tests', () => {
     const retrievedWithCategory = await repo.getTransaction(newTx.id);
     expect(retrievedWithCategory?.account_name).toBe('Cash');
     expect(retrievedWithCategory?.category_name).toBe('Food');
+    expect(retrievedWithCategory?.category_icon).toBe('restaurant-outline');
+
+    const createdCategory = await repo.addCategory({
+      name: 'Custom Books',
+      emoji: '📚',
+      color: '#B69CFF',
+      kind: 'expense',
+    });
+    expect(createdCategory.icon).toBe('school-outline');
+
 
     await adapter.closeAsync();
   });

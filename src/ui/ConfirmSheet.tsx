@@ -22,6 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { colors, radii, spacing, typography } from './tokens';
+import { CategoryIcon } from './kit/CategoryIcon';
 import { Category, TransactionType } from '../domain/types';
 import { ParseResult } from '../parser';
 import { formatRupees } from '../domain/money';
@@ -236,9 +237,12 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
                 onPress={() => setIsPickerOpen(!isPickerOpen)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.categoryEmoji}>
-                  {selectedCategory?.emoji || '✨'}
-                </Text>
+                <CategoryIcon
+                  name={selectedCategory?.icon}
+                  color={selectedCategory?.color}
+                  size={18}
+                  variant="plain"
+                />
                 <Text style={styles.categoryName}>
                   {selectedCategory?.name || 'Select Category'}
                 </Text>
@@ -286,7 +290,7 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
                           setIsPickerOpen(false);
                         }}
                       >
-                        <Text style={styles.catPickEmoji}>{cat.emoji}</Text>
+                        <CategoryIcon name={cat.icon} color={cat.color} size={18} variant="plain" />
                         <Text style={styles.catPickText}>{cat.name}</Text>
                       </TouchableOpacity>
                     );

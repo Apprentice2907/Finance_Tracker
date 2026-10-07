@@ -16,6 +16,7 @@ export interface Category {
   id: string;
   name: string;
   emoji: string;
+  icon: string;
   color: string;
   kind: CategoryKind;
   sort_order: number;
@@ -49,9 +50,11 @@ export interface Transaction {
 export interface TransactionWithCategory extends Transaction {
   category_name?: string;
   category_emoji?: string;
+  category_icon?: string;
   category_color?: string;
   account_name?: string;
 }
+
 
 export interface KeywordMapEntry {
   id: string;
@@ -101,6 +104,7 @@ export interface CategoryTotal {
   category_id: string;
   category_name: string;
   category_emoji: string;
+  category_icon?: string;
   category_color: string;
   total_paise: number;
   count: number;
@@ -140,7 +144,8 @@ export interface UpdateTransactionInput {
 
 export interface CreateCategoryInput {
   name: string;
-  emoji: string;
+  emoji?: string;
+  icon?: string;
   color: string;
   kind: CategoryKind;
   sort_order?: number;
@@ -150,9 +155,11 @@ export interface CreateCategoryInput {
 export interface UpdateCategoryInput {
   name?: string;
   emoji?: string;
+  icon?: string;
   color?: string;
   sort_order?: number;
 }
+
 
 export interface BackupData {
   app: 'wini';
@@ -346,6 +353,7 @@ export interface PeriodReport {
     category_id: string;
     category_name: string;
     category_emoji: string;
+    category_icon?: string;
     category_color: string;
     kind: CategoryKind;
     total_paise: number;
@@ -353,6 +361,7 @@ export interface PeriodReport {
     share_pct: number;
     average_paise: number;
   }[];
+
   insights: string[];
   topTransactions: TransactionWithCategory[];
 }

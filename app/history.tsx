@@ -18,6 +18,7 @@ import {
   BackHandler,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing } from '../src/ui/tokens';
 import { useAppStore } from '../src/state/useAppStore';
 import { formatRupees } from '../src/domain/money';
@@ -25,7 +26,7 @@ import { TransactionWithCategory, TransactionType } from '../src/domain/types';
 import { SearchIcon, TrashIcon } from '../src/ui/icons';
 import { TransactionModal } from '../src/ui/TransactionModal';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
-import { Screen } from '../src/ui/kit';
+import { Screen, CategoryIcon } from '../src/ui/kit';
 import { formatRelativeDate } from '../src/utils/microcopy';
 
 function HistoryContent() {
@@ -215,7 +216,7 @@ function HistoryContent() {
         >
           {filteredGroups.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyEmoji}>🔍</Text>
+              <Ionicons name="search-outline" size={40} color={colors.muted} />
               <Text style={styles.emptyTitle}>No transactions found</Text>
               <Text style={styles.emptySubtitle}>
                 Try adjusting your search query or filters.
@@ -254,7 +255,7 @@ function HistoryContent() {
                           },
                         ]}
                       >
-                        <Text style={styles.txEmoji}>{tx.category_emoji || '✨'}</Text>
+                        <CategoryIcon name={tx.category_icon} color={tx.category_color} size={20} variant="plain" />
                       </View>
 
                       <View style={styles.txDetails}>
@@ -263,7 +264,7 @@ function HistoryContent() {
                         </Text>
                         <Text style={styles.txCategory}>
                           {tx.category_name || 'General'}
-                          {tx.source === 'voice' && ' • 🎤 Voice'}
+                          {tx.source === 'voice' && ' • Voice'}
                         </Text>
                       </View>
 

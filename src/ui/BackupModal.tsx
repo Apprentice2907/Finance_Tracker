@@ -99,7 +99,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
     >
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
-          <Text style={styles.title}>Restore Backup 📦</Text>
+          <Text style={styles.title}>Restore Backup</Text>
           <Text style={styles.subtitle}>
             Verified Wini v1 Backup from {formattedExportDate}
           </Text>

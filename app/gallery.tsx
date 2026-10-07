@@ -454,10 +454,10 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
       </View>
       <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          <Chip label="Selected" emoji="✨" selected={chipSelected} onPress={() => setChipSelected(!chipSelected)} />
-          <Chip label="Unselected" emoji="🍕" selected={false} onPress={() => setChipSelected(true)} />
-          <Chip label="Colored" emoji="🚕" color={C.income} selected={false} onPress={() => {}} />
-          <Chip label="Disabled" emoji="🔒" disabled selected={false} />
+          <Chip label="Selected" selected={chipSelected} onPress={() => setChipSelected(!chipSelected)} />
+          <Chip label="Unselected" selected={false} onPress={() => setChipSelected(true)} />
+          <Chip label="Colored" color={C.income} selected={false} onPress={() => {}} />
+          <Chip label="Disabled" disabled selected={false} />
         </View>
       </Card>
 
@@ -467,9 +467,9 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
         <Text style={dyn.sectionSub}>Left icon · title · subtitle · right metric · chevron</Text>
       </View>
       <Card variant="surface" padding="none" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
-        <ListRow title="Auto / Rickshaw" subtitle="Transport • Yesterday" left={<Text style={dyn.listEmoji}>🛺</Text>} right={<AmountText amountPaise={4000} type="expense" showSign size="md" />} borderBottom showChevron onPress={() => {}} />
-        <ListRow title="Salary Credited" subtitle="Income • Oct 1, 2026" left={<Text style={dyn.listEmoji}>💰</Text>} right={<AmountText amountPaise={5000000} type="income" showSign size="md" />} borderBottom showChevron onPress={() => {}} />
-        <ListRow title="Disabled Row" subtitle="Interaction prevented" left={<Text style={dyn.listEmoji}>🔒</Text>} disabled showChevron />
+        <ListRow title="Auto / Rickshaw" subtitle="Transport • Yesterday" left={<CategoryIcon name="car-outline" color={categoryColors.transport} size={20} variant="plain" />} right={<AmountText amountPaise={4000} type="expense" showSign size="md" />} borderBottom showChevron onPress={() => {}} />
+        <ListRow title="Salary Credited" subtitle="Income • Oct 1, 2026" left={<CategoryIcon name="cash-outline" color={categoryColors.salary} size={20} variant="plain" />} right={<AmountText amountPaise={5000000} type="income" showSign size="md" />} borderBottom showChevron onPress={() => {}} />
+        <ListRow title="Disabled Row" subtitle="Interaction prevented" left={<CategoryIcon name="lock-closed-outline" color={C.textMuted} size={20} variant="plain" />} disabled showChevron />
       </Card>
 
       {/* ── 13. Skeleton ─────────────────────────────────────── */}
@@ -502,7 +502,7 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
         <Text style={dyn.sectionSub}>Friendly fallback for empty lists / searches</Text>
       </View>
       <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
-        <EmptyState emoji="📦" title="No Transactions Found" description="Try adjusting your date range or speaking an expense using the mic button." actionTitle="Add Transaction" onAction={() => {}} />
+        <EmptyState icon={<Ionicons name="cube-outline" size={40} color={C.textMuted} />} title="No Transactions Found" description="Try adjusting your date range or speaking an expense using the mic button." actionTitle="Add Transaction" onAction={() => {}} />
       </Card>
 
       {/* ── 16. Keypad ───────────────────────────────────────── */}
@@ -656,14 +656,11 @@ export default function ComponentGalleryScreen() {
               ]}
               activeOpacity={0.75}
             >
-              <Text
-                style={[
-                  styles.themeLabel,
-                  { color: localTheme === t ? C.onAccent : C.textMuted },
-                ]}
-              >
-                {t === 'night' ? '🌙' : '☀️'}
-              </Text>
+              <Ionicons
+                name={t === 'night' ? 'moon-outline' : 'sunny-outline'}
+                size={14}
+                color={localTheme === t ? C.onAccent : C.textMuted}
+              />
             </TouchableOpacity>
           ))}
         </View>

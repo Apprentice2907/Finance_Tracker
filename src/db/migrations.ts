@@ -50,12 +50,13 @@ export async function migrateDatabase(db: DatabaseAdapter): Promise<void> {
     const now = new Date().toISOString();
     for (const cat of DEFAULT_CATEGORIES) {
       await db.runAsync(
-        `INSERT OR IGNORE INTO categories (id, name, emoji, color, kind, sort_order, is_system, created_at, updated_at, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
+        `INSERT OR IGNORE INTO categories (id, name, emoji, icon, color, kind, sort_order, is_system, created_at, updated_at, deleted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
         [
           cat.id,
           cat.name,
           cat.emoji,
+          cat.icon || 'ellipsis-horizontal',
           cat.color,
           cat.kind,
           cat.sort_order,
@@ -65,6 +66,7 @@ export async function migrateDatabase(db: DatabaseAdapter): Promise<void> {
         ]
       );
     }
+
 
     // Seed default settings
     const deviceId = generateId();
@@ -218,5 +220,36 @@ export async function migrateDatabase(db: DatabaseAdapter): Promise<void> {
       throw error;
     }
   }
+
+  if (currentVersion < 5) {
+    // Migration v5: Add icon column to categories and backfill from emoji (WINI_DESIGN_DECISIONS.md 1.4)
+    await db.execAsync('BEGIN TRANSACTION;');
+    try {
+      // Step 1: Add icon column to categories if missing
+      const categoryColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(categories);');
+      const hasIcon = categoryColumns.some((col) => col.name === 'icon');
+      if (!hasIcon) {
+        await db.execAsync("ALTER TABLE categories ADD COLUMN icon TEXT NOT NULL DEFAULT 'ellipsis-horizontal';");
+      }
+
+      // Step 2: Backfill icon values for all existing categories using mapEmojiOrNameToIcon
+      const allCategories = await db.getAllAsync<{ id: string; name: string; emoji: string }>(
+        'SELECT id, name, emoji FROM categories;'
+      );
+
+      const { mapEmojiOrNameToIcon } = await import('../domain/categories');
+      for (const cat of allCategories) {
+        const iconKey = mapEmojiOrNameToIcon(cat.emoji || cat.name);
+        await db.runAsync('UPDATE categories SET icon = ? WHERE id = ?;', [iconKey, cat.id]);
+      }
+
+      await db.execAsync(`PRAGMA user_version = 5;`);
+      await db.execAsync('COMMIT;');
+    } catch (error) {
+      await db.execAsync('ROLLBACK;');
+      throw error;
+    }
+  }
 }
+
 

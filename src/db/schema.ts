@@ -7,13 +7,14 @@
  * A "schema" is the structure of tables, columns, and rules (like CHECK constraints).
  */
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export const CREATE_CATEGORIES_TABLE = `
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   emoji TEXT NOT NULL,
+  icon TEXT NOT NULL DEFAULT 'ellipsis-horizontal',
   color TEXT NOT NULL,
   kind TEXT NOT NULL CHECK(kind IN ('expense', 'income')),
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS categories (
   deleted_at TEXT
 );
 `;
+
 
 export const CREATE_TRANSACTIONS_TABLE = `
 CREATE TABLE IF NOT EXISTS transactions (

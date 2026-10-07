@@ -34,7 +34,7 @@ import {
 import { BackupModal } from '../src/ui/BackupModal';
 import { defaultModelManager, WhisperModelId } from '../src/speech';
 
-import { Screen } from '../src/ui/kit';
+import { Screen, CategoryIcon } from '../src/ui/kit';
 import { shouldShowBackupReminder, formatRelativeDate, pluralize } from '../src/utils/microcopy';
 
 function SettingsContent() {
@@ -269,7 +269,7 @@ function SettingsContent() {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: themeColors.text }]}>Settings ⚙️</Text>
+          <Text style={[styles.title, { color: themeColors.text }]}>Settings</Text>
           <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
             Categories, learned vocabulary & data backup
           </Text>
@@ -278,7 +278,7 @@ function SettingsContent() {
         {/* Section: Appearance & Theme */}
         <View style={[styles.section, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Appearance & Theme 🎨</Text>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Appearance & Theme</Text>
           </View>
           <Text style={[styles.sectionDesc, { color: themeColors.textMuted }]}>
             Choose between Night (dark fintech with lime accent) and Pocket (clean light wallet with blue accent).
@@ -334,7 +334,7 @@ function SettingsContent() {
                   themeMode === 'night' && { color: themeColors.accent, fontWeight: '700' },
                 ]}
               >
-                Night 🌙
+                Night
               </Text>
               <Text style={[styles.engineTabSub, { color: themeColors.textMuted }]}>Dark fintech</Text>
             </TouchableOpacity>
@@ -361,7 +361,7 @@ function SettingsContent() {
                   themeMode === 'pocket' && { color: themeColors.accent, fontWeight: '700' },
                 ]}
               >
-                Pocket ☀️
+                Pocket
               </Text>
               <Text style={[styles.engineTabSub, { color: themeColors.textMuted }]}>Light wallet</Text>
             </TouchableOpacity>
@@ -388,7 +388,7 @@ function SettingsContent() {
                 <MicIcon size={20} color={colors.primary} />
               </View>
               <View style={styles.voiceLabTextContainer}>
-                <Text style={styles.voiceLabTitle}>Open Voice Lab 🔬</Text>
+                <Text style={styles.voiceLabTitle}>Open Voice Lab</Text>
                 <Text style={styles.voiceLabDesc}>
                   Record test phrases, benchmark latency, and inspect alternatives.
                 </Text>
@@ -619,7 +619,7 @@ function SettingsContent() {
           {/* Suggestions from corrections */}
           {suggestedKeywords.length > 0 && (
             <View style={styles.suggestionsCard}>
-              <Text style={styles.suggestionsTitle}>💡 Suggestions from Voice Corrections</Text>
+              <Text style={styles.suggestionsTitle}>Suggestions from Voice Corrections</Text>
               <Text style={styles.suggestionsDesc}>
                 Words corrected when confirming voice entries:
               </Text>
@@ -634,7 +634,7 @@ function SettingsContent() {
                       activeOpacity={0.8}
                     >
                       <Text style={styles.suggestionChipText}>
-                        &ldquo;{sug.word}&rdquo; → {cat?.emoji || '✨'} {cat?.name || 'General'}
+                        &ldquo;{sug.word}&rdquo; → {cat?.name || 'General'}
                       </Text>
                       <Text style={styles.suggestionPlus}>+ Learn</Text>
                     </TouchableOpacity>
@@ -676,7 +676,7 @@ function SettingsContent() {
             {isBackupStale && (
               <View style={styles.reminderBanner}>
                 <Text style={styles.reminderText}>
-                  💡 It has been more than 14 days since your last backup. We recommend exporting your data.
+                  It has been more than 14 days since your last backup. We recommend exporting your data.
                 </Text>
               </View>
             )}
@@ -738,7 +738,7 @@ function SettingsContent() {
                   <View style={styles.keywordInfo}>
                     <Text style={styles.keywordWord}>{`"${kw.word}"`}</Text>
                     <View style={styles.categoryPill}>
-                      <Text style={styles.categoryEmoji}>{kw.category_emoji || '✨'}</Text>
+                      <CategoryIcon name={kw.category_icon} color={colors.primary} size={14} variant="plain" />
                       <Text style={styles.categoryName}>{kw.category_name || 'General'}</Text>
                     </View>
                   </View>
@@ -779,7 +779,7 @@ function SettingsContent() {
                       { backgroundColor: `${cat.color}22` },
                     ]}
                   >
-                    <Text style={styles.catEmojiText}>{cat.emoji}</Text>
+                    <CategoryIcon name={cat.icon} color={cat.color} size={18} variant="plain" />
                   </View>
                   <View>
                     <Text style={styles.catTitle}>{cat.name}</Text>
@@ -823,7 +823,7 @@ function SettingsContent() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
           <View style={[styles.card, { padding: spacing.lg }]}>
-            <Text style={styles.aboutName}>Wini 🛺</Text>
+            <Text style={styles.aboutName}>Wini</Text>
             <Text style={styles.aboutVersion}>Version 1.0.0 (Expo SDK 57)</Text>
             <Text style={styles.aboutDesc}>
               Personal, voice-first, local-first finance tracker. Your financial data is stored

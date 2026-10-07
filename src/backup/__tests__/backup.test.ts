@@ -22,6 +22,7 @@ describe('Backup Validation & Round-Trip', () => {
         id: 'cat-1',
         name: 'Transport',
         emoji: '🛺',
+        icon: 'car-outline',
         color: '#3B6EF5',
         kind: 'expense',
         sort_order: 1,

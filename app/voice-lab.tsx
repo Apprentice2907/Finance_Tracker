@@ -242,7 +242,7 @@ function VoiceLabContent() {
           <View style={styles.engineHeaderRow}>
             <Text style={styles.engineSelectTitle}>TEST ENGINE</Text>
             {selectedLabEngine === 'whisper' && !isWhisperModelReady && (
-              <Text style={styles.engineWarningText}>⚠️ Model missing (will fallback)</Text>
+              <Text style={styles.engineWarningText}>Model missing (will fallback)</Text>
             )}
           </View>
           <View style={styles.engineButtonsRow}>
