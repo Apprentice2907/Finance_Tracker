@@ -88,6 +88,12 @@ function NavigationShell() {
           }}
         />
         <Tabs.Screen
+          name="voice-check"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
           name="gallery"
           options={{
             href: null,

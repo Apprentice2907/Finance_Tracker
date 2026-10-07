@@ -23,7 +23,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, radii, spacing, typography } from '../src/ui/tokens';
 import { useTheme } from '../src/ui/ThemeContext';
 import { useAppStore } from '../src/state/useAppStore';
-import { TrashIcon, ExportIcon, ImportIcon, MicIcon } from '../src/ui/icons';
+import { TrashIcon, ExportIcon, ImportIcon, MicIcon, CheckCircleIcon } from '../src/ui/icons';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { getRepository } from '../src/db';
 import {
@@ -546,6 +546,26 @@ function SettingsContent() {
                 <Text style={styles.voiceLabTitle}>Open Voice Lab</Text>
                 <Text style={styles.voiceLabDesc}>
                   Record test phrases, benchmark latency, and inspect alternatives.
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.voiceLabArrow}>→</Text>
+          </TouchableOpacity>
+
+          {/* Voice Check Navigation Card */}
+          <TouchableOpacity
+            style={[styles.voiceLabCard, { marginTop: 8 }]}
+            onPress={() => router.push('/voice-check' as any)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.voiceLabLeft}>
+              <View style={styles.voiceLabIconWrap}>
+                <CheckCircleIcon size={20} color={colors.income} />
+              </View>
+              <View style={styles.voiceLabTextContainer}>
+                <Text style={styles.voiceLabTitle}>Voice Check</Text>
+                <Text style={styles.voiceLabDesc}>
+                  Run the 50-phrase benchmark suite, check accuracy & export results.
                 </Text>
               </View>
             </View>

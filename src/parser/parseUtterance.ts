@@ -18,6 +18,7 @@ export interface ParseResult {
   type: 'expense' | 'income';
   amountPaise: number | null;
   category: string | null;
+  accountAlias?: string;
   note: string;
   date: string;
   confidence: number;
@@ -288,7 +289,8 @@ export function parseUtterance(
   text: string,
   now: Date = new Date(),
   _tz = 'Asia/Kolkata',
-  keywords?: KeywordMap
+  keywords?: KeywordMap,
+  accountAliases?: Record<string, string>
 ): ParseResult {
   try {
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
@@ -331,6 +333,37 @@ export function parseUtterance(
       .replace(/[!?;:()]/g, ' ');
 
     const tokens = normalized.split(/\s+/).filter(Boolean);
+
+    // 3.5. Extract Account Alias
+    let detectedAccountAlias: string | undefined = undefined;
+    const accountTokenIndices = new Set<number>();
+
+    if (accountAliases && Object.keys(accountAliases).length > 0) {
+      // Normalize lookup keys to lowercase
+      const aliasMap: Record<string, string> = {};
+      for (const [k, v] of Object.entries(accountAliases)) {
+        aliasMap[k.toLowerCase()] = v;
+      }
+
+      for (let i = 0; i < tokens.length; i++) {
+        const word = tokens[i].toLowerCase();
+        if (word === 'from' || word === 'via' || word === 'using' || word === 'through') {
+          if (i + 1 < tokens.length) {
+            const nextWord = tokens[i + 1].toLowerCase();
+            if (aliasMap[nextWord]) {
+              detectedAccountAlias = aliasMap[nextWord];
+              accountTokenIndices.add(i);
+              accountTokenIndices.add(i + 1);
+              break;
+            }
+          }
+        } else if (aliasMap[word]) {
+          detectedAccountAlias = aliasMap[word];
+          accountTokenIndices.add(i);
+          break;
+        }
+      }
+    }
 
     // 4. Extract Amount
     const { amountRupees, matchedTokens: amountTokenIndices } = extractAmount(tokens);
@@ -423,6 +456,7 @@ export function parseUtterance(
 
     for (let i = 0; i < tokens.length; i++) {
       if (amountTokenIndices.has(i)) continue;
+      if (accountTokenIndices.has(i)) continue;
 
       const raw = tokens[i];
       const lower = raw.toLowerCase();
@@ -474,6 +508,7 @@ export function parseUtterance(
       type,
       amountPaise,
       category: detectedCategory,
+      accountAlias: detectedAccountAlias,
       note,
       date,
       confidence,
@@ -500,16 +535,17 @@ export function parseBestAlternative(
   alternatives: string[],
   now: Date = new Date(),
   tz: string = 'Asia/Kolkata',
-  keywords?: KeywordMap
+  keywords?: KeywordMap,
+  accountAliases?: Record<string, string>
 ): { bestParsed: ParseResult; bestTranscript: string } {
   if (!alternatives || alternatives.length === 0) {
     return {
-      bestParsed: parseUtterance('', now, tz, keywords),
+      bestParsed: parseUtterance('', now, tz, keywords, accountAliases),
       bestTranscript: '',
     };
   }
 
-  let bestParsed = parseUtterance(alternatives[0], now, tz, keywords);
+  let bestParsed = parseUtterance(alternatives[0], now, tz, keywords, accountAliases);
   let bestTranscript = alternatives[0];
 
   const scoreCandidate = (p: ParseResult): number => {
@@ -524,7 +560,7 @@ export function parseBestAlternative(
   for (let i = 1; i < alternatives.length; i++) {
     const alt = alternatives[i];
     if (!alt || !alt.trim()) continue;
-    const parsed = parseUtterance(alt, now, tz, keywords);
+    const parsed = parseUtterance(alt, now, tz, keywords, accountAliases);
     const score = scoreCandidate(parsed);
 
     if (score > bestScore) {
