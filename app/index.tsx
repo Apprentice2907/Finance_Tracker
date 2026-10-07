@@ -27,7 +27,8 @@ import { TransactionWithCategory, TransactionType } from '../src/domain/types';
 import { TransactionModal } from '../src/ui/TransactionModal';
 import { VoiceSheet } from '../src/ui/VoiceSheet';
 import { ConfirmSheet } from '../src/ui/ConfirmSheet';
-import { parseBestAlternative, ParseResult } from '../src/parser';
+import { ParseResult } from '../src/parser';
+import { processComposerInput } from '../src/domain/composerPipeline';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { useRouter } from 'expo-router';
 import { ExpoSpeechService } from '../src/speech/ExpoSpeechService';
@@ -248,20 +249,15 @@ function HomeContent() {
     setVoiceSheetVisible(false);
     setTranscriptSource(source);
 
-    const candidates =
-      details?.alternatives && details.alternatives.length > 0
-        ? details.alternatives
-        : [transcript];
+    const { parsed, effectiveTranscript, candidates } = processComposerInput({
+      text: transcript,
+      source,
+      alternatives: details?.alternatives,
+      now: new Date(),
+      timeZone: 'Asia/Kolkata',
+      keywordMap,
+    });
 
-    const { bestParsed, bestTranscript } = parseBestAlternative(
-      candidates,
-      new Date(),
-      'Asia/Kolkata',
-      keywordMap
-    );
-
-    const parsed = bestParsed;
-    const effectiveTranscript = bestTranscript || transcript;
     setCurrentTranscript(effectiveTranscript);
 
     let logId: string | null = null;
