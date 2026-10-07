@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { colors, radii, spacing, typography } from './tokens';
 import { CategoryIcon } from './kit/CategoryIcon';
+import { SegmentedControl } from './kit/SegmentedControl';
 import { Category, TransactionType } from '../domain/types';
 import { ParseResult } from '../parser';
 import { formatRupees } from '../domain/money';
@@ -75,20 +76,23 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [userSelectedCategoryId, setUserSelectedCategoryId] = useState<string | null>(null);
   const [selectedCategoryTarget, setSelectedCategoryTarget] = useState<string | null>(null);
+  const [userSelectedType, setUserSelectedType] = useState<TransactionType | null>(null);
+  const [selectedTypeTarget, setSelectedTypeTarget] = useState<string | null>(null);
 
-  const currentKey = `${parsed?.amountPaise}_${parsed?.category}_${parsed?.note}`;
+  const currentKey = `${parsed?.amountPaise}_${parsed?.category}_${parsed?.note}_${parsed?.type}`;
+  const effectiveType = (selectedTypeTarget === currentKey && userSelectedType) ? userSelectedType : (parsed?.type || 'expense');
 
   const computedDefaultCategoryId = React.useMemo(() => {
     if (!parsed) return '';
     if (parsed.category) {
       const found = categories.find(
-        (c) => c.name.toLowerCase() === parsed.category?.toLowerCase()
+        (c) => c.name.toLowerCase() === parsed.category?.toLowerCase() && c.kind === effectiveType
       );
       if (found) return found.id;
     }
-    const defaultCat = categories.find((c) => c.kind === parsed.type);
+    const defaultCat = categories.find((c) => c.kind === effectiveType);
     return defaultCat?.id || categories[0]?.id || '';
-  }, [parsed, categories]);
+  }, [parsed, categories, effectiveType]);
 
   const selectedCategoryId =
     selectedCategoryTarget === currentKey && userSelectedCategoryId
@@ -132,7 +136,7 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
       }
 
       await onSave({
-        type: parsed.type,
+        type: effectiveType,
         amountPaise: parsed.amountPaise,
         categoryId: selectedCategoryId,
         note: parsed.note,
@@ -152,7 +156,7 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
   const handleEdit = () => {
     if (!parsed.amountPaise) return;
     onEdit({
-      type: parsed.type,
+      type: effectiveType,
       amountPaise: parsed.amountPaise,
       categoryId: selectedCategoryId,
       note: parsed.note,
@@ -196,32 +200,33 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
             </View>
           ) : null}
 
+          {/* Type Toggle (Expense | Income) */}
+          <View style={{ marginBottom: spacing.sm, marginHorizontal: spacing.xs }}>
+            <SegmentedControl
+              options={[
+                { key: 'expense', label: 'Expense' },
+                { key: 'income', label: 'Income' },
+              ]}
+              selectedKey={effectiveType}
+              onChange={(key) => {
+                const nextType = key as TransactionType;
+                setUserSelectedType(nextType);
+                setSelectedTypeTarget(currentKey);
+              }}
+            />
+          </View>
+
           {/* Amount Display */}
           <View style={styles.amountWrap}>
             <Text
               style={[
                 styles.amountValue,
-                parsed.type === 'income' ? styles.amountIncome : styles.amountExpense,
+                effectiveType === 'income' ? styles.amountIncome : styles.amountExpense,
               ]}
             >
-              {parsed.type === 'income' ? '+' : '-'}
+              {effectiveType === 'income' ? '+' : '-'}
               {formatRupees(parsed.amountPaise)}
             </Text>
-            <View
-              style={[
-                styles.typeBadge,
-                parsed.type === 'income' ? styles.typeBadgeIncome : styles.typeBadgeExpense,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.typeBadgeText,
-                  parsed.type === 'income' ? styles.typeBadgeTextIncome : styles.typeBadgeTextExpense,
-                ]}
-              >
-                {parsed.type === 'income' ? 'Income' : 'Expense'}
-              </Text>
-            </View>
           </View>
 
           {/* Transaction Summary Card */}
@@ -275,7 +280,7 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
                 style={styles.pickerScroll}
               >
                 {categories
-                  .filter((c) => c.kind === parsed.type)
+                  .filter((c) => c.kind === effectiveType)
                   .map((cat) => {
                     const isSelected = cat.id === selectedCategoryId;
                     return (
