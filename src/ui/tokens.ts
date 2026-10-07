@@ -62,40 +62,40 @@ export interface ThemeColors {
 }
 
 export const nightColors: ThemeColors = {
-  bg: '#0B0B0D',
-  surface: '#151517',
-  surface2: '#1E1E21',
+  bg: '#000000',
+  surface: '#161618',
+  surface2: '#1F1F22',
   border: 'rgba(255,255,255,0.08)',
   text: '#FFFFFF',
   textMuted: '#8E8E93',
   textSecondary: '#8E8E93',
   accent: '#F2F96E', // lime-yellow
-  onAccent: '#0B0B0D',
-  income: '#7CF2A0',
+  onAccent: '#000000',
+  income: '#7DF2A3',
   expense: '#FF6B7A',
   danger: '#FF5A5F',
   warning: '#FFC83D',
-  chartTrack: '#2A2A2E',
+  chartTrack: '#38383C',
   chartLine: '#F2F96E',
-  glassFill: 'rgba(255,255,255,0.06)',
-  glassBorder: 'rgba(255,255,255,0.12)',
-  navFill: 'rgba(30,30,33,0.92)',
-  paper: '#151517',
+  glassFill: 'rgba(255,255,255,0.10)',
+  glassBorder: 'rgba(255,255,255,0.18)',
+  navFill: 'rgba(22,22,24,0.92)',
+  paper: '#161618',
   paperLine: 'rgba(255,255,255,0.08)',
-  cardGreen: '#7CF2A0',
+  cardGreen: '#7DF2A3',
   cardYellow: '#F2F96E',
-  cardBlack: '#0B0B0D',
+  cardBlack: '#000000',
 
   // Compatibility aliases
-  background: '#0B0B0D',
-  surfaceAlt: '#1E1E21',
-  surfaceInput: '#1E1E21',
-  elevated: '#1E1E21',
+  background: '#000000',
+  surfaceAlt: '#1F1F22',
+  surfaceInput: '#1F1F22',
+  elevated: '#1F1F22',
   elevatedBorder: 'rgba(255,255,255,0.08)',
   primary: '#F2F96E',
   primaryHover: '#DDE55B',
   primaryMuted: 'rgba(242, 249, 110, 0.15)',
-  incomeMuted: 'rgba(124, 242, 160, 0.15)',
+  incomeMuted: 'rgba(125, 242, 163, 0.15)',
   expenseMuted: 'rgba(255, 107, 122, 0.15)',
   dangerMuted: 'rgba(255, 90, 95, 0.15)',
   warningMuted: 'rgba(255, 200, 61, 0.15)',
@@ -104,13 +104,13 @@ export const nightColors: ThemeColors = {
   black: '#000000',
   shadow: '#000000',
   transparent: 'transparent',
-  cardOverlay: 'rgba(11, 11, 13, 0.65)',
+  cardOverlay: 'rgba(0, 0, 0, 0.65)',
   modalBackdrop: 'rgba(0, 0, 0, 0.75)',
   chartBlueStart: '#7A5CFA',
   chartBlueEnd: '#2F6BFF',
   accentPurple: '#7A5CFA',
   accentPurpleMuted: 'rgba(122, 92, 250, 0.15)',
-  glass: 'rgba(255, 255, 255, 0.06)',
+  glass: 'rgba(255, 255, 255, 0.10)',
 };
 
 export const pocketColors: ThemeColors = {
@@ -165,20 +165,47 @@ export const pocketColors: ThemeColors = {
   glass: 'rgba(255, 255, 255, 0.14)',
 };
 
+/**
+ * Step 1 Segment Palette for Donut / Charts (Section 1.3):
+ * Mint, Cyan, White, Periwinkle, Lime, Pink, Orange, Lavender, Grey.
+ */
+export const chartPalette: string[] = [
+  '#7DF2A3', // mint
+  '#7FE3F5', // cyan
+  '#F2F2F2', // white
+  '#6B6BF0', // periwinkle
+  '#F2F96E', // lime
+  '#F58FD6', // pink
+  '#FFB27A', // orange
+  '#B69CFF', // lavender
+  '#9AA0A6', // grey
+];
+
+/**
+ * Step 1 Bar Chart vertical selected gradient (Section 1.2):
+ * top #DCE4FF → middle #7E96FF → bottom #5B5BF0
+ */
+export const barSelectedGradient: [string, string, string] = [
+  '#DCE4FF',
+  '#7E96FF',
+  '#5B5BF0',
+];
+
 export const categoryColors: Record<string, string> = {
-  yellow: '#FFC83D',
-  mint: '#2EE6A6',
-  violet: '#7A5CFA',
-  magenta: '#E5338A',
-  blue: '#2F6BFF',
-  cyan: '#35D0F2',
-  orange: '#FF8A3D',
-  lime: '#B8E04A',
-  pink: '#FF8FD0',
-  coral: '#FF6B6B',
-  teal: '#1FB6A6',
-  grey: '#8E8E93',
+  yellow: '#F2F96E',
+  mint: '#7DF2A3',
+  violet: '#6B6BF0',
+  magenta: '#F58FD6',
+  blue: '#7FE3F5',
+  cyan: '#7FE3F5',
+  orange: '#FFB27A',
+  lime: '#F2F96E',
+  pink: '#F58FD6',
+  coral: '#FF6B7A',
+  lavender: '#B69CFF',
+  grey: '#9AA0A6',
 };
+
 
 // Default export uses nightColors for static/fallback access
 export const colors: ThemeColors = nightColors;

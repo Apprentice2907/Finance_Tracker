@@ -24,16 +24,16 @@ describe('Design Spec Phase D1: Tokens & Theme System', () => {
     await adapter.closeAsync();
   });
 
-  test('Night tokens strictly match WINI_DESIGN_SPEC Section 3.1', () => {
-    expect(nightColors.bg).toBe('#0B0B0D');
-    expect(nightColors.surface).toBe('#151517');
-    expect(nightColors.surface2).toBe('#1E1E21');
+  test('Night tokens strictly match WINI_DESIGN_DECISIONS Section 1.1', () => {
+    expect(nightColors.bg).toBe('#000000');
+    expect(nightColors.surface).toBe('#161618');
+    expect(nightColors.surface2).toBe('#1F1F22');
     expect(nightColors.accent).toBe('#F2F96E'); // Lime-yellow accent
-    expect(nightColors.onAccent).toBe('#0B0B0D');
-    expect(nightColors.income).toBe('#7CF2A0');
+    expect(nightColors.onAccent).toBe('#000000');
+    expect(nightColors.income).toBe('#7DF2A3');
     expect(nightColors.expense).toBe('#FF6B7A');
     expect(nightColors.danger).toBe('#FF5A5F');
-    expect(nightColors.chartTrack).toBe('#2A2A2E');
+    expect(nightColors.chartTrack).toBe('#38383C');
     expect(nightColors.border).toBe('rgba(255,255,255,0.08)');
   });
 
@@ -52,19 +52,20 @@ describe('Design Spec Phase D1: Tokens & Theme System', () => {
   });
 
   test('Category colors define all 12 spec colors with exact hex values', () => {
-    expect(categoryColors.yellow).toBe('#FFC83D');
-    expect(categoryColors.mint).toBe('#2EE6A6');
-    expect(categoryColors.violet).toBe('#7A5CFA');
-    expect(categoryColors.magenta).toBe('#E5338A');
-    expect(categoryColors.blue).toBe('#2F6BFF');
-    expect(categoryColors.cyan).toBe('#35D0F2');
-    expect(categoryColors.orange).toBe('#FF8A3D');
-    expect(categoryColors.lime).toBe('#B8E04A');
-    expect(categoryColors.pink).toBe('#FF8FD0');
-    expect(categoryColors.coral).toBe('#FF6B6B');
-    expect(categoryColors.teal).toBe('#1FB6A6');
-    expect(categoryColors.grey).toBe('#8E8E93');
+    expect(categoryColors.yellow).toBe('#F2F96E');
+    expect(categoryColors.mint).toBe('#7DF2A3');
+    expect(categoryColors.violet).toBe('#6B6BF0');
+    expect(categoryColors.magenta).toBe('#F58FD6');
+    expect(categoryColors.blue).toBe('#7FE3F5');
+    expect(categoryColors.cyan).toBe('#7FE3F5');
+    expect(categoryColors.orange).toBe('#FFB27A');
+    expect(categoryColors.lime).toBe('#F2F96E');
+    expect(categoryColors.pink).toBe('#F58FD6');
+    expect(categoryColors.coral).toBe('#FF6B7A');
+    expect(categoryColors.lavender).toBe('#B69CFF');
+    expect(categoryColors.grey).toBe('#9AA0A6');
   });
+
 
   test('theme_mode setting persists and reads from database repository', async () => {
     // Default is 'system'

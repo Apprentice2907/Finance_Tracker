@@ -18,4 +18,8 @@ export * from './TransactionRow';
 export * from './GlassButton';
 export * from './Keypad';
 export * from './FloatingNav';
+export * from './PillSelector';
+export * from './GlassChip';
+export * from './HeroCard';
 export * from './charts';
+

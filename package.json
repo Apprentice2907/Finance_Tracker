@@ -66,5 +66,18 @@
     "test": "jest --runInBand",
     "prebuild-check": "node ./scripts/prebuild-check.js"
   },
+  "expo": {
+    "install": {
+      "exclude": [
+        "@expo/ui",
+        "expo",
+        "expo-constants",
+        "expo-linking",
+        "expo-router",
+        "expo-sqlite"
+      ]
+    }
+  },
   "private": true
 }
+

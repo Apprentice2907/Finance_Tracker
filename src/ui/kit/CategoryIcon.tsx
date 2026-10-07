@@ -1,92 +1,91 @@
 /**
- * CategoryIcon squircle component for Wini.
+ * CategoryIcon component for Wini.
  * Where it fits: Used on category lists, transaction rows, tiles, and sheets.
  *
- * Implements WINI_DESIGN_SPEC.md Section 3.3 & 5.6:
- * - Squircle container (radius 14 on 44px box)
- * - Night: Filled with category colour and near-black glyph (#0B0B0D)
- * - Pocket: Tinted 14% category colour background with coloured glyph
- * - Uses Ionicons or fallback emoji
+ * Implements WINI_DESIGN_DECISIONS.md Section 1.4:
+ * - Line icons from @expo/vector-icons (Ionicons outline set) as white single-colour glyphs
+ * - Default: glass circle holder (44px, fill glassFill, 1px glassBorder)
+ * - Alternate: block holder (solid surface2 rounded square, radius 14)
+ * - Sizes: sm (32px), md (44px), lg (54px)
  */
 
 import React from 'react';
-import { StyleSheet, View, Text, ViewStyle, StyleProp } from 'react-native';
+import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { radii, categoryColors, nightColors } from '../tokens';
+import { radii } from '../tokens';
 import { useTheme } from '../ThemeContext';
+import { mapEmojiOrNameToIcon, IconKey } from '../../domain/categories';
 
 export interface CategoryIconProps {
-  name?: string; // Ionicons name or category name
-  color?: string; // hex category color
-  emoji?: string; // optional fallback emoji
+  /** Ionicons outline name, category name, or category icon key */
+  name?: string | null;
+  /** Optional icon key */
+  iconKey?: IconKey;
+  /** Optional fallback emoji (converted to vector icon) */
+  emoji?: string | null;
+  /** Optional category color (for badge or dot accent if needed) */
+  color?: string;
+  /** Variant: 'glass' (circle with glass border) or 'block' (surface2 rounded square) */
+  variant?: 'glass' | 'block';
+  /** Preset size */
   size?: 'sm' | 'md' | 'lg';
   style?: StyleProp<ViewStyle>;
 }
 
-const DEFAULT_CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  food: 'restaurant',
-  transport: 'car',
-  shopping: 'bag-handle',
-  bills: 'receipt',
-  health: 'heart',
-  fun: 'game-controller',
-  education: 'school',
-  other: 'ellipsis-horizontal',
-  income: 'trending-up',
-  salary: 'briefcase',
-};
-
 export const CategoryIcon: React.FC<CategoryIconProps> = ({
-  name = 'other',
-  color = categoryColors.grey,
+  name,
+  iconKey,
   emoji,
+  variant = 'glass',
   size = 'md',
   style,
 }) => {
-  const { isDark } = useTheme();
+  const { colors } = useTheme();
 
   const dimensions = {
-    sm: { box: 32, icon: 16, radius: 10, emoji: 14 },
-    md: { box: 44, icon: 22, radius: radii.lg, emoji: 20 },
-    lg: { box: 54, icon: 28, radius: radii.xl, emoji: 26 },
+    sm: { box: 32, icon: 16, radius: variant === 'glass' ? radii.round : 10 },
+    md: { box: 44, icon: 22, radius: variant === 'glass' ? radii.round : 14 },
+    lg: { box: 54, icon: 26, radius: variant === 'glass' ? radii.round : 18 },
   }[size];
 
-  // Resolve Ionicons glyph
-  const cleanName = name.toLowerCase().trim();
-  const ioniconKey =
-    DEFAULT_CATEGORY_ICONS[cleanName] ||
-    ((cleanName in Ionicons.glyphMap ? cleanName : 'ellipsis-horizontal') as keyof typeof Ionicons.glyphMap);
+  // Resolve vector icon key: if iconKey is provided, use it; otherwise resolve via emoji or name
+  const resolvedKey = iconKey || mapEmojiOrNameToIcon(name || emoji);
 
-  // Background and glyph styling by theme
-  const containerBg = isDark ? color : `${color}24`; // 14% tint in Pocket
-  const glyphColor = isDark ? nightColors.onAccent : color;
+  // Background and border styling
+  const isGlass = variant === 'glass';
+  const containerBg = isGlass ? colors.glassFill : colors.surface2;
+  const borderColor = isGlass ? colors.glassBorder : colors.border;
+  const glyphColor = colors.white;
 
   return (
     <View
       style={[
-        styles.squircle,
+        styles.container,
         {
           width: dimensions.box,
           height: dimensions.box,
           borderRadius: dimensions.radius,
           backgroundColor: containerBg,
+          borderColor,
+          borderWidth: 1,
         },
         style,
       ]}
     >
-      {emoji ? (
-        <Text style={{ fontSize: dimensions.emoji }}>{emoji}</Text>
-      ) : (
-        <Ionicons name={ioniconKey} size={dimensions.icon} color={glyphColor} />
-      )}
+      <Ionicons
+        name={resolvedKey as keyof typeof Ionicons.glyphMap}
+        size={dimensions.icon}
+        color={glyphColor}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  squircle: {
+  container: {
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
 });
+

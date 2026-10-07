@@ -55,7 +55,7 @@ export const CategoryTile: React.FC<CategoryTileProps> = ({
       ]}
     >
       <View style={styles.topRow}>
-        <CategoryIcon name={iconName || name} color={color} emoji={emoji} size="md" />
+        <CategoryIcon name={iconName || name} iconKey={iconName as any} color={color} emoji={emoji} variant="block" size="md" />
         {percentage !== undefined ? (
           <View style={[styles.badge, { backgroundColor: colors.glassFill }]}>
             <Text style={[styles.badgeText, { color: colors.textMuted }]}>{percentage}%</Text>

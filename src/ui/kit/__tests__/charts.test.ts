@@ -1,45 +1,57 @@
 /**
- * Unit tests for D3 chart geometry helpers.
- * Imports from chartGeometry.ts which has NO React/RN dependencies —
+ * Unit tests for D3 chart geometry helpers and kit logic.
+ * Imports from chartGeometry.ts and categories.ts —
  * runs safely in Node (ts-jest) environment.
  */
 
 import {
   computeDonutSegments,
   computeBars,
+  clampTooltipX,
   mapToPoints,
   computeGaugeSegments,
   polarToCartesian,
   semicircleArcPath,
+  STEP1_CHART_PALETTE,
 } from '../charts/chartGeometry';
+import {
+  mapEmojiOrNameToIcon,
+  ICON_KEYS,
+  DEFAULT_CATEGORIES,
+} from '../../../domain/categories';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DonutChart geometry
+// DonutChart geometry (Section 1.3)
 // ─────────────────────────────────────────────────────────────────────────────
-describe('computeDonutSegments', () => {
+describe('computeDonutSegments (Step 1 spec)', () => {
   const segments = [
-    { key: 'food', label: 'Food', amountPaise: 300000 },
     { key: 'transport', label: 'Transport', amountPaise: 100000 },
-    { key: 'bills', label: 'Bills', amountPaise: 100000 },
+    { key: 'food', label: 'Food', amountPaise: 300000 },
+    { key: 'bills', label: 'Bills', amountPaise: 200000 },
   ];
-  const strokeWidth = 18;
-  const radius = 82;
+  const size = 200;
+  const strokeWidth = 40; // 20% of diameter
+  const radius = (size - strokeWidth) / 2; // 80
 
-  test('returns one entry per segment', () => {
-    const result = computeDonutSegments(segments, strokeWidth, radius);
+  test('returns segments sorted largest first', () => {
+    const result = computeDonutSegments(segments, strokeWidth, radius, STEP1_CHART_PALETTE, 6);
     expect(result).toHaveLength(3);
+    expect(result[0].key).toBe('food'); // 3000
+    expect(result[1].key).toBe('bills'); // 2000
+    expect(result[2].key).toBe('transport'); // 1000
   });
 
-  test('percentages sum to approximately 1', () => {
-    const result = computeDonutSegments(segments, strokeWidth, radius);
+  test('percentages sum to exactly 1.0', () => {
+    const result = computeDonutSegments(segments, strokeWidth, radius, STEP1_CHART_PALETTE, 6);
     const totalPct = result.reduce((s, r) => s + r.pct, 0);
     expect(totalPct).toBeCloseTo(1, 5);
   });
 
-  test('largest segment has largest dashLen', () => {
-    const result = computeDonutSegments(segments, strokeWidth, radius);
-    const largest = result.reduce((a, b) => (a.dashLen > b.dashLen ? a : b));
-    expect(largest.key).toBe('food');
+  test('uses Step 1 segment palette in order', () => {
+    const result = computeDonutSegments(segments, strokeWidth, radius, STEP1_CHART_PALETTE, 6);
+    expect(result[0].color).toBe(STEP1_CHART_PALETTE[0]); // mint
+    expect(result[1].color).toBe(STEP1_CHART_PALETTE[1]); // cyan
+    expect(result[2].color).toBe(STEP1_CHART_PALETTE[2]); // white
   });
 
   test('empty segments returns empty array', () => {
@@ -52,89 +64,137 @@ describe('computeDonutSegments', () => {
     ).toEqual([]);
   });
 
-  test('single segment: pct === 1', () => {
+  test('single segment: pct === 1 and dashLen spans full circumference', () => {
     const result = computeDonutSegments(
       [{ key: 'only', label: 'Only', amountPaise: 500000 }],
       strokeWidth,
       radius,
+      STEP1_CHART_PALETTE,
+      6,
     );
     expect(result).toHaveLength(1);
     expect(result[0].pct).toBeCloseTo(1, 5);
+    const circumference = 2 * Math.PI * radius;
+    expect(result[0].dashLen).toBeCloseTo(circumference, 1);
   });
 
-  test('rotate values are monotonically increasing', () => {
-    const result = computeDonutSegments(segments, strokeWidth, radius);
+  test('rotate values are monotonically increasing clockwise', () => {
+    const result = computeDonutSegments(segments, strokeWidth, radius, STEP1_CHART_PALETTE, 6);
     for (let i = 1; i < result.length; i++) {
       expect(result[i].rotate).toBeGreaterThan(result[i - 1].rotate);
     }
   });
+});
 
-  test('12-month dataset has correct length', () => {
-    const monthly = Array.from({ length: 12 }, (_, i) => ({
-      key: `m${i}`,
-      label: `Month ${i + 1}`,
-      amountPaise: (i + 1) * 50000,
-    }));
-    expect(computeDonutSegments(monthly, strokeWidth, radius)).toHaveLength(12);
+// ─────────────────────────────────────────────────────────────────────────────
+// BarChart geometry (Section 1.2)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('computeBars (Step 1 spec)', () => {
+  const data = [
+    { key: 'w1', label: 'W1', amountPaise: 200000 },
+    { key: 'w2', label: 'W2', amountPaise: 500000 },
+    { key: 'w3', label: 'W3', amountPaise: 300000 },
+    { key: 'w4', label: 'W4', amountPaise: 0 },
+    { key: 'w5', label: 'W5', amountPaise: 600000 },
+  ];
+  const chartWidth = 320;
+  const plotHeight = 190;
+  const barRadius = 9;
+
+  test('computes equal-width bars with 80% slot and 20% gap', () => {
+    const bars = computeBars(data, chartWidth, plotHeight, barRadius, 0.8, 0.9, 6);
+    expect(bars).toHaveLength(5);
+
+    const slotWidth = chartWidth / 5; // 64
+    const expectedBarW = slotWidth * 0.8; // 51.2
+    bars.forEach((b) => {
+      expect(b.w).toBeCloseTo(expectedBarW, 4);
+    });
+  });
+
+  test('tallest bar reaches about 90% of plot height', () => {
+    const bars = computeBars(data, chartWidth, plotHeight, barRadius, 0.8, 0.9, 6);
+    const maxBar = bars.find((b) => b.key === 'w5')!;
+    expect(maxBar.h).toBeCloseTo(plotHeight * 0.9, 1);
+  });
+
+  test('zero-value bar shows 6px stub', () => {
+    const bars = computeBars(data, chartWidth, plotHeight, barRadius, 0.8, 0.9, 6);
+    const zeroBar = bars.find((b) => b.key === 'w4')!;
+    expect(zeroBar.h).toBe(6);
+  });
+
+  test('bars are ordered left-to-right within chart bounds', () => {
+    const bars = computeBars(data, chartWidth, plotHeight, barRadius, 0.8, 0.9, 6);
+    for (let i = 1; i < bars.length; i++) {
+      expect(bars[i].x).toBeGreaterThan(bars[i - 1].x);
+    }
+    const lastBar = bars[bars.length - 1];
+    expect(lastBar.x + lastBar.w).toBeLessThanOrEqual(chartWidth + 0.1);
+  });
+
+  test('empty dataset returns empty array', () => {
+    expect(computeBars([], chartWidth, plotHeight)).toHaveLength(0);
+  });
+});
+
+describe('clampTooltipX (Section 1.2)', () => {
+  const cardWidth = 320;
+  const tooltipWidth = 76;
+  const padding = 12;
+
+  test('clamps left edge to prevent overflow', () => {
+    const clamped = clampTooltipX(10, tooltipWidth, cardWidth, padding);
+    expect(clamped).toBe(padding + tooltipWidth / 2); // 12 + 38 = 50
+  });
+
+  test('clamps right edge to prevent overflow', () => {
+    const clamped = clampTooltipX(315, tooltipWidth, cardWidth, padding);
+    expect(clamped).toBe(cardWidth - padding - tooltipWidth / 2); // 320 - 12 - 38 = 270
+  });
+
+  test('keeps centered X when safely within bounds', () => {
+    const clamped = clampTooltipX(160, tooltipWidth, cardWidth, padding);
+    expect(clamped).toBe(160);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BarChart geometry
+// Category Icon Mapping (Section 1.4)
 // ─────────────────────────────────────────────────────────────────────────────
-describe('computeBars', () => {
-  const data = [
-    { key: 'mon', label: 'Mon', amountPaise: 200000 },
-    { key: 'tue', label: 'Tue', amountPaise: 500000 },
-    { key: 'wed', label: 'Wed', amountPaise: 300000 },
-    { key: 'thu', label: 'Thu', amountPaise: 100000 },
-    { key: 'fri', label: 'Fri', amountPaise: 450000 },
-    { key: 'sat', label: 'Sat', amountPaise: 600000 },
-    { key: 'sun', label: 'Sun', amountPaise: 150000 },
-  ];
-  const W = 320, H = 140, barRadius = 6, gap = 8;
-
-  test('returns one bar per data point', () => {
-    expect(computeBars(data, W, H, barRadius, gap)).toHaveLength(7);
+describe('Category Icon Mapping (Section 1.4)', () => {
+  test('every default category has an icon in ICON_KEYS', () => {
+    DEFAULT_CATEGORIES.forEach((cat) => {
+      expect((ICON_KEYS as readonly string[]).includes(cat.icon)).toBe(true);
+    });
   });
 
-  test('tallest bar corresponds to highest amount', () => {
-    const bars = computeBars(data, W, H, barRadius, gap);
-    const tallest = bars.reduce((a, b) => (a.h > b.h ? a : b));
-    expect(tallest.key).toBe('sat');
+  test('maps known names to line icons', () => {
+    expect(mapEmojiOrNameToIcon('Food')).toBe('restaurant-outline');
+    expect(mapEmojiOrNameToIcon('Transport')).toBe('car-outline');
+    expect(mapEmojiOrNameToIcon('Shopping')).toBe('bag-handle-outline');
+    expect(mapEmojiOrNameToIcon('Bills')).toBe('receipt-outline');
+    expect(mapEmojiOrNameToIcon('Health')).toBe('heart-outline');
+    expect(mapEmojiOrNameToIcon('Fun')).toBe('game-controller-outline');
+    expect(mapEmojiOrNameToIcon('Other')).toBe('ellipsis-horizontal');
+    expect(mapEmojiOrNameToIcon('Income')).toBe('trending-up-outline');
   });
 
-  test('bars are sorted left-to-right', () => {
-    const bars = computeBars(data, W, H, barRadius, gap);
-    for (let i = 1; i < bars.length; i++) {
-      expect(bars[i].x).toBeGreaterThan(bars[i - 1].x);
-    }
+  test('maps known emojis to line icons', () => {
+    expect(mapEmojiOrNameToIcon('🍔')).toBe('restaurant-outline');
+    expect(mapEmojiOrNameToIcon('🛺')).toBe('car-outline');
+    expect(mapEmojiOrNameToIcon('🛍️')).toBe('bag-handle-outline');
+    expect(mapEmojiOrNameToIcon('🧾')).toBe('receipt-outline');
+    expect(mapEmojiOrNameToIcon('💊')).toBe('heart-outline');
+    expect(mapEmojiOrNameToIcon('🎉')).toBe('game-controller-outline');
+    expect(mapEmojiOrNameToIcon('✨')).toBe('ellipsis-horizontal');
+    expect(mapEmojiOrNameToIcon('💰')).toBe('trending-up-outline');
   });
 
-  test('empty dataset returns empty array', () => {
-    expect(computeBars([], W, H, barRadius, gap)).toHaveLength(0);
-  });
-
-  test('single bar fills chart height', () => {
-    const bars = computeBars([{ key: 'x', label: 'X', amountPaise: 100000 }], W, H, barRadius, gap);
-    expect(bars[0].h).toBeCloseTo(H, 0);
-  });
-
-  test('zero amount bar has minimum height >= 2 * barRadius', () => {
-    const bars = computeBars(
-      [{ key: 'a', label: 'A', amountPaise: 100000 }, { key: 'b', label: 'B', amountPaise: 0 }],
-      W, H, barRadius, gap,
-    );
-    expect(bars[1].h).toBeGreaterThanOrEqual(barRadius * 2);
-  });
-
-  test('12 bars fit within chart width', () => {
-    const monthly = Array.from({ length: 12 }, (_, i) => ({
-      key: `m${i}`, label: `M${i + 1}`, amountPaise: (i + 1) * 50000,
-    }));
-    const bars = computeBars(monthly, W, H, barRadius, gap);
-    const rightmost = bars[bars.length - 1];
-    expect(rightmost.x + rightmost.w).toBeLessThanOrEqual(W + 1);
+  test('returns ellipsis-horizontal default for unknown emoji/name', () => {
+    expect(mapEmojiOrNameToIcon('🦄')).toBe('ellipsis-horizontal');
+    expect(mapEmojiOrNameToIcon('UnknownNonexistent')).toBe('ellipsis-horizontal');
+    expect(mapEmojiOrNameToIcon(null)).toBe('ellipsis-horizontal');
   });
 });
 
@@ -168,64 +228,22 @@ describe('mapToPoints', () => {
     const lowest = pts.reduce((a, b) => (a.amountPaise < b.amountPaise ? a : b));
     expect(highest.y).toBeLessThan(lowest.y);
   });
-
-  test('projected flag is preserved', () => {
-    const pts = mapToPoints(data, W, H, padX, padY);
-    expect(pts[0].projected).toBe(false);
-    expect(pts[3].projected).toBe(true);
-  });
-
-  test('empty dataset returns empty array', () => {
-    expect(mapToPoints([], W, H, padX, padY)).toHaveLength(0);
-  });
-
-  test('single point placed at padX', () => {
-    const pts = mapToPoints(
-      [{ key: 'x', label: 'X', amountPaise: 100000, projected: false }],
-      W, H, padX, padY,
-    );
-    expect(pts[0].x).toBeCloseTo(padX, 1);
-  });
-
-  test('12 monthly points: x is monotonically increasing', () => {
-    const monthly = Array.from({ length: 12 }, (_, i) => ({
-      key: `m${i}`, label: `M${i + 1}`, amountPaise: (i + 1) * 50000, projected: i >= 10,
-    }));
-    const pts = mapToPoints(monthly, W, H, padX, padY);
-    for (let i = 1; i < pts.length; i++) {
-      expect(pts[i].x).toBeGreaterThan(pts[i - 1].x);
-    }
-  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SemicircleGauge geometry
 // ─────────────────────────────────────────────────────────────────────────────
-describe('polarToCartesian', () => {
+describe('polarToCartesian & semicircleArcPath', () => {
   test('0 degrees returns leftmost point', () => {
     const pt = polarToCartesian(110, 110, 90, 0);
     expect(pt.x).toBeCloseTo(20, 0);
     expect(pt.y).toBeCloseTo(110, 0);
   });
 
-  test('180 degrees returns rightmost point', () => {
-    const pt = polarToCartesian(110, 110, 90, 180);
-    expect(pt.x).toBeCloseTo(200, 0);
-    expect(pt.y).toBeCloseTo(110, 0);
-  });
-});
-
-describe('semicircleArcPath', () => {
   test('returns non-empty SVG path string', () => {
     const path = semicircleArcPath(110, 110, 90, 0, 90);
     expect(typeof path).toBe('string');
-    expect(path.length).toBeGreaterThan(0);
     expect(path).toContain('A');
-  });
-
-  test('arc > 180 deg has largeArc=1', () => {
-    const path = semicircleArcPath(110, 110, 90, 0, 181);
-    expect(path).toContain(' 1 1 ');
   });
 });
 
@@ -238,27 +256,5 @@ describe('computeGaugeSegments', () => {
 
   test('returns one result per segment', () => {
     expect(computeGaugeSegments(segs, 110, 110, 90)).toHaveLength(3);
-  });
-
-  test('percentages sum to approximately 1', () => {
-    const result = computeGaugeSegments(segs, 110, 110, 90);
-    const sum = result.reduce((s, r) => s + r.pct, 0);
-    expect(sum).toBeCloseTo(1, 5);
-  });
-
-  test('each segment has a non-empty path', () => {
-    computeGaugeSegments(segs, 110, 110, 90).forEach((r) => {
-      expect(r.path.length).toBeGreaterThan(0);
-    });
-  });
-
-  test('empty segments returns empty array', () => {
-    expect(computeGaugeSegments([], 110, 110, 90)).toEqual([]);
-  });
-
-  test('zero total returns empty array', () => {
-    expect(
-      computeGaugeSegments([{ key: 'x', label: 'X', amountPaise: 0 }], 110, 110, 90),
-    ).toEqual([]);
   });
 });

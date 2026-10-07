@@ -1,11 +1,11 @@
 /**
  * SegmentedControl component for Wini.
- * Where it fits: Used for Speak | Type, Expense | Income, and period selection.
+ * Where it fits: Used for Expenses | Income toggle, Period selection, and subview switches.
  *
- * Implements WINI_DESIGN_SPEC.md Section 5.4:
- * - Pill track: rounded container with surface tone
- * - Active segment: Filled pill (white on Night with #0B0B0D text; white with shadow on Pocket)
- * - Inactive segment: Muted text
+ * Implements WINI_DESIGN_DECISIONS.md Section 1.2:
+ * - Track: surface2, height 48px, radius 999, 4px inner padding
+ * - Active segment: solid white pill with black semibold text
+ * - Inactive text: textMuted / near-white
  */
 
 import React from 'react';
@@ -17,7 +17,7 @@ import {
   ViewStyle,
   StyleProp,
 } from 'react-native';
-import { radii, spacing, typography, elevations } from '../tokens';
+import { radii, typography } from '../tokens';
 import { useTheme } from '../ThemeContext';
 
 export interface SegmentOption {
@@ -39,7 +39,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
   onChange,
   style,
 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   return (
     <View
@@ -56,7 +56,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
         const isSelected = opt.key === selectedKey;
         const activeBg = colors.white;
         const activeText = colors.black;
-        const activeShadow = isDark ? null : elevations.sm;
+        const inactiveText = colors.textMuted;
 
         return (
           <TouchableOpacity
@@ -67,7 +67,6 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
               styles.segment,
               isSelected && {
                 backgroundColor: activeBg,
-                ...activeShadow,
               },
             ]}
             accessibilityRole="tab"
@@ -77,7 +76,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
             <Text
               style={[
                 styles.label,
-                { color: isSelected ? activeText : colors.textMuted },
+                { color: isSelected ? activeText : inactiveText },
                 isSelected && styles.labelSelected,
               ]}
               numberOfLines={1}
@@ -95,28 +94,28 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     borderRadius: radii.round,
-    padding: spacing.xs,
+    padding: 4,
     borderWidth: 1,
-    minHeight: 44,
+    height: 48,
+    alignItems: 'center',
   },
   segment: {
     flex: 1,
+    height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
     borderRadius: radii.round,
   },
   icon: {
-    marginRight: spacing.xs,
+    marginRight: 6,
   },
   label: {
     fontFamily: typography.bodyMedium,
-    fontSize: typography.sizeSm,
+    fontSize: 14,
   },
   labelSelected: {
     fontFamily: typography.bodySemiBold,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });
