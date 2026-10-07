@@ -135,7 +135,11 @@ describe('Wini v2 Safe Database Migration Tests', () => {
 
     // 4. VERIFY DATABASE VERSION
     const versionRow = await adapter.getFirstAsync<{ user_version: number }>('PRAGMA user_version;');
-    expect(versionRow?.user_version).toBe(5);
+    expect(versionRow?.user_version).toBe(6);
+
+    // Verify voice_log timings_json column exists
+    const voiceLogCols = await adapter.getAllAsync<{ name: string }>('PRAGMA table_info(voice_log);');
+    expect(voiceLogCols.some((col) => col.name === 'timings_json')).toBe(true);
 
     // 5. VERIFY SNAPSHOT TABLES DROPPED ON SUCCESS
     const snapshotTables = await adapter.getAllAsync<any>(
@@ -221,7 +225,7 @@ describe('Wini v2 Safe Database Migration Tests', () => {
     // 10. VERIFY IDEMPOTENCY: Re-running migration produces no errors and leaves data intact
     await migrateDatabase(adapter);
     const postReRunVersion = await adapter.getFirstAsync<{ user_version: number }>('PRAGMA user_version;');
-    expect(postReRunVersion?.user_version).toBe(5);
+    expect(postReRunVersion?.user_version).toBe(6);
     const postReRunTxs = await adapter.getAllAsync<any>('SELECT * FROM transactions;');
     expect(postReRunTxs.length).toBe(5);
 

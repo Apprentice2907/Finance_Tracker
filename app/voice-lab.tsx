@@ -8,16 +8,13 @@
  * parameters, and saving ground-truth evaluation pairs to the local `voice_log` database.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -28,7 +25,8 @@ import { useAppStore } from '../src/state/useAppStore';
 import { parseUtterance, ParseResult } from '../src/parser';
 import { SpeechService, SpeechState } from '../src/speech/SpeechService';
 import { createSpeechService, defaultModelManager, WhisperModelId } from '../src/speech';
-import { VoiceLogEntry } from '../src/domain/types';
+import { VoiceLogEntry, VoiceLogTimings } from '../src/domain/types';
+import { median, percentile } from '../src/domain/stats';
 import { formatRupees } from '../src/domain/money';
 import { MicIcon, TrashIcon } from '../src/ui/icons';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
@@ -63,6 +61,41 @@ function VoiceLabContent() {
   const [activeEngineUsed, setActiveEngineUsed] = useState<string>('expo');
   const [isWhisperModelReady, setIsWhisperModelReady] = useState(false);
   const activeServiceRef = React.useRef<SpeechService | null>(null);
+  const activeTimingsRef = React.useRef<VoiceLogTimings | null>(null);
+
+  const latencyMetrics = useMemo(() => {
+    const tapToListeningList: number[] = [];
+    const endSpeechToSavedList: number[] = [];
+
+    for (const log of logs.slice(0, 50)) {
+      if (log.timings_json) {
+        try {
+          const t: VoiceLogTimings = JSON.parse(log.timings_json);
+          if (t.tap && t.recognizer_started && t.recognizer_started >= t.tap) {
+            tapToListeningList.push(t.recognizer_started - t.tap);
+          }
+          const endSpeech = t.final_result || t.first_partial;
+          const savedTime = t.saved || t.ui_updated;
+          if (endSpeech && savedTime && savedTime >= endSpeech) {
+            endSpeechToSavedList.push(savedTime - endSpeech);
+          }
+        } catch {
+          // Ignore json parse error
+        }
+      } else if (log.latency_ms > 0) {
+        endSpeechToSavedList.push(log.latency_ms);
+      }
+    }
+
+    return {
+      tapToListeningMedian: median(tapToListeningList),
+      tapToListeningP95: percentile(tapToListeningList, 95),
+      tapToListeningCount: tapToListeningList.length,
+      endSpeechToSavedMedian: median(endSpeechToSavedList),
+      endSpeechToSavedP95: percentile(endSpeechToSavedList, 95),
+      endSpeechToSavedCount: endSpeechToSavedList.length,
+    };
+  }, [logs]);
 
   useEffect(() => {
     defaultModelManager
@@ -127,11 +160,26 @@ function VoiceLabContent() {
       setActiveEngineUsed(selectedEngine);
 
       const startTime = Date.now();
+      const timings: VoiceLogTimings = {
+        tap: startTime,
+      };
+      activeTimingsRef.current = timings;
 
       await service.startListening({
-        onStateChange: (state) => setSpeechState(state),
-        onPartialTranscript: (text) => setCurrentTranscript(text),
+        onStateChange: (state) => {
+          if (state === 'listening' && !timings.recognizer_started) {
+            timings.recognizer_started = Date.now();
+          }
+          setSpeechState(state);
+        },
+        onPartialTranscript: (text) => {
+          if (!timings.first_partial) {
+            timings.first_partial = Date.now();
+          }
+          setCurrentTranscript(text);
+        },
         onFinalTranscript: (text, details) => {
+          timings.final_result = Date.now();
           const latency = details?.latencyMs ?? (Date.now() - startTime);
           setLatencyMs(latency);
           setCurrentTranscript(text);
@@ -165,6 +213,13 @@ function VoiceLabContent() {
 
       const parseToStore = parsed || parseUtterance(currentTranscript, new Date(), 'Asia/Kolkata', keywordMap);
 
+      const nowSaved = Date.now();
+      const updatedTimings: VoiceLogTimings = {
+        ...(activeTimingsRef.current || {}),
+        saved: nowSaved,
+        ui_updated: nowSaved,
+      };
+
       const entry = await addVoiceLog({
         engine: activeEngineUsed || selectedLabEngine,
         raw_transcript: currentTranscript.trim(),
@@ -177,6 +232,7 @@ function VoiceLabContent() {
         }),
         corrected: isCorrected,
         latency_ms: latencyMs || 0,
+        timings_json: JSON.stringify(updatedTimings),
       });
 
       if (entry) {
@@ -279,6 +335,42 @@ function VoiceLabContent() {
                 Whisper (Local)
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Latency Benchmarks (Last 50 attempts) */}
+        <View style={styles.metricsCard}>
+          <View style={styles.metricsHeaderRow}>
+            <Text style={styles.metricsHeaderTitle}>LATENCY BENCHMARKS (LAST 50)</Text>
+            <Text style={styles.metricsHeaderSub}>Targets: ≤250ms / ≤500ms</Text>
+          </View>
+
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricCol}>
+              <Text style={styles.metricLabel}>Tap-to-Listening</Text>
+              <Text style={styles.metricValue}>
+                {latencyMetrics.tapToListeningCount > 0
+                  ? `${Math.round(latencyMetrics.tapToListeningMedian)}ms`
+                  : '—'}
+              </Text>
+              <Text style={styles.metricSub}>
+                p95: {latencyMetrics.tapToListeningCount > 0 ? `${Math.round(latencyMetrics.tapToListeningP95)}ms` : '—'}
+              </Text>
+            </View>
+
+            <View style={styles.metricDivider} />
+
+            <View style={styles.metricCol}>
+              <Text style={styles.metricLabel}>End-of-Speech-to-Saved</Text>
+              <Text style={styles.metricValue}>
+                {latencyMetrics.endSpeechToSavedCount > 0
+                  ? `${Math.round(latencyMetrics.endSpeechToSavedMedian)}ms`
+                  : '—'}
+              </Text>
+              <Text style={styles.metricSub}>
+                p95: {latencyMetrics.endSpeechToSavedCount > 0 ? `${Math.round(latencyMetrics.endSpeechToSavedP95)}ms` : '—'}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -880,5 +972,61 @@ const styles = StyleSheet.create({
   logTime: {
     color: colors.muted,
     fontSize: 11,
+  },
+  metricsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  metricsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  metricsHeaderTitle: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  metricsHeaderSub: {
+    color: colors.textMuted,
+    fontSize: 11,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metricCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  metricLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  metricValue: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    fontFamily: typography.bodyBold,
+    marginBottom: 2,
+  },
+  metricSub: {
+    color: colors.muted,
+    fontSize: 11,
+  },
+  metricDivider: {
+    width: 1,
+    height: 44,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.sm,
   },
 });

@@ -447,4 +447,15 @@ export class WhisperSpeechService implements SpeechService {
 
     this.setState('idle');
   }
+
+  async warmup(): Promise<void> {
+    try {
+      const isDownloaded = await this.modelManager.isModelDownloaded(this.modelId);
+      if (isDownloaded) {
+        await this.getOrInitContext();
+      }
+    } catch {
+      // Warmup is non-blocking best-effort
+    }
+  }
 }

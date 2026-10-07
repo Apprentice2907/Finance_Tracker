@@ -635,11 +635,12 @@ export class Repository {
     const latency = input.latency_ms ?? 0;
     const alternatives = input.alternatives_json ?? '[]';
     const finalSaved = input.final_saved_json ?? null;
+    const timingsJson = input.timings_json ?? null;
 
     await this.db.runAsync(
       `INSERT INTO voice_log (
-        id, engine, raw_transcript, alternatives_json, parsed_json, final_saved_json, corrected, latency_ms, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        id, engine, raw_transcript, alternatives_json, parsed_json, final_saved_json, corrected, latency_ms, timings_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
         id,
         input.engine,
@@ -649,6 +650,7 @@ export class Repository {
         finalSaved,
         correctedInt,
         latency,
+        timingsJson,
         now,
       ]
     );
@@ -662,15 +664,28 @@ export class Repository {
       final_saved_json: finalSaved,
       corrected: Boolean(input.corrected),
       latency_ms: latency,
+      timings_json: timingsJson,
       created_at: now,
     };
   }
 
-  async updateVoiceLogSaved(id: string, finalSavedJson: string, corrected: boolean): Promise<void> {
-    await this.db.runAsync(
-      `UPDATE voice_log SET final_saved_json = ?, corrected = ? WHERE id = ?;`,
-      [finalSavedJson, corrected ? 1 : 0, id]
-    );
+  async updateVoiceLogSaved(
+    id: string,
+    finalSavedJson: string,
+    corrected: boolean,
+    timingsJson?: string | null
+  ): Promise<void> {
+    if (timingsJson !== undefined) {
+      await this.db.runAsync(
+        `UPDATE voice_log SET final_saved_json = ?, corrected = ?, timings_json = ? WHERE id = ?;`,
+        [finalSavedJson, corrected ? 1 : 0, timingsJson, id]
+      );
+    } else {
+      await this.db.runAsync(
+        `UPDATE voice_log SET final_saved_json = ?, corrected = ? WHERE id = ?;`,
+        [finalSavedJson, corrected ? 1 : 0, id]
+      );
+    }
   }
 
   async getVoiceLogs(limit = 100): Promise<VoiceLogEntry[]> {

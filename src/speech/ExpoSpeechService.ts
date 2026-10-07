@@ -329,4 +329,14 @@ export class ExpoSpeechService implements SpeechService {
         return 'Could not recognize speech. Please try speaking again or use typing instead.';
     }
   }
+
+  async warmup(): Promise<void> {
+    try {
+      if (ExpoSpeechRecognitionModule?.getStateAsync) {
+        await ExpoSpeechRecognitionModule.getStateAsync();
+      }
+    } catch {
+      // Warmup is non-blocking best-effort
+    }
+  }
 }

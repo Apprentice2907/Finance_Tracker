@@ -69,6 +69,17 @@ export interface SettingEntry {
   value: string;
 }
 
+export interface VoiceLogTimings {
+  tap?: number;
+  recognizer_started?: number;
+  first_partial?: number;
+  final_result?: number;
+  parsed?: number;
+  saved?: number;
+  ui_updated?: number;
+  [key: string]: number | undefined;
+}
+
 export interface VoiceLogEntry {
   id: string;
   engine: string;
@@ -78,6 +89,7 @@ export interface VoiceLogEntry {
   final_saved_json: string | null;
   corrected: boolean | number;
   latency_ms: number;
+  timings_json?: string | null;
   created_at: string;
 }
 
@@ -90,6 +102,7 @@ export interface CreateVoiceLogInput {
   final_saved_json?: string | null;
   corrected?: boolean;
   latency_ms?: number;
+  timings_json?: string | null;
   created_at?: string;
 }
 

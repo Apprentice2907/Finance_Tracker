@@ -10,7 +10,7 @@
  * 5. Floating bottom navigation with centre mic button (no quick-action row, no duplicate mic)
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, typography, radii } from '../src/ui/tokens';
 import { useAppStore } from '../src/state/useAppStore';
 import { formatRupees } from '../src/domain/money';
-import { TransactionWithCategory, TransactionType } from '../src/domain/types';
+import { TransactionWithCategory, TransactionType, VoiceLogTimings } from '../src/domain/types';
 import { TransactionModal } from '../src/ui/TransactionModal';
 import { VoiceSheet } from '../src/ui/VoiceSheet';
 import { ConfirmSheet } from '../src/ui/ConfirmSheet';
@@ -31,8 +31,9 @@ import { ParseResult } from '../src/parser';
 import { processComposerInput } from '../src/domain/composerPipeline';
 import { decideAddAction } from '../src/domain/autoAdd';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ExpoSpeechService } from '../src/speech/ExpoSpeechService';
+import { createSpeechService, WhisperModelId } from '../src/speech';
 import {
   Screen,
   HeroCard,
@@ -119,6 +120,8 @@ function HomeContent() {
     showBanner,
     keepVoiceLog,
     voiceEngine,
+    whisperModel,
+    preferOnDevice,
     autoAddMode,
     autoAddLimitPaise,
     addVoiceLog,
@@ -135,6 +138,23 @@ function HomeContent() {
     txId: string;
     txData: TransactionWithCategory;
   } | null>(null);
+  const [voiceTapTime, setVoiceTapTime] = useState<number | undefined>(undefined);
+  const activeTimingsRef = useRef<VoiceLogTimings | null>(null);
+
+  // Warm up recognizer when Home gains focus
+  useFocusEffect(
+    useCallback(() => {
+      createSpeechService({
+        engine: voiceEngine,
+        whisperModelId: whisperModel as WhisperModelId,
+        preferOnDevice,
+      })
+        .then(({ service }) => {
+          service.warmup?.().catch(() => {});
+        })
+        .catch(() => {});
+    }, [voiceEngine, whisperModel, preferOnDevice])
+  );
 
   // Month selection (YYYY-MM)
   const currentMonthKey = useMemo(() => {
@@ -228,7 +248,15 @@ function HomeContent() {
     return getDonutBreakdownData(allTransactions, selectedMonth, activeCashflowType);
   }, [allTransactions, selectedMonth, activeCashflowType]);
 
-  const openVoiceAdd = () => {
+  const openTypeAdd = useCallback(() => {
+    Haptics.selectionAsync().catch(() => {});
+    setVoiceSheetMode('typed');
+    setVoiceSheetVisible(true);
+  }, []);
+
+  const openVoiceAdd = useCallback(() => {
+    const tapNow = Date.now();
+    setVoiceTapTime(tapNow);
     if (Platform.OS === 'web' && !isSpeechAvailable) {
       openTypeAdd();
       return;
@@ -236,25 +264,24 @@ function HomeContent() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setVoiceSheetMode('voice');
     setVoiceSheetVisible(true);
-  };
+  }, [isSpeechAvailable, openTypeAdd]);
 
-  const openTypeAdd = () => {
-    Haptics.selectionAsync().catch(() => {});
-    setVoiceSheetMode('typed');
-    setVoiceSheetVisible(true);
-  };
-
-  const openEditModal = (tx: TransactionWithCategory) => {
+  const openEditModal = useCallback((tx: TransactionWithCategory) => {
     Haptics.selectionAsync().catch(() => {});
     setEditingTransaction(tx);
     setModalDefaultType(tx.type);
     setModalVisible(true);
-  };
+  }, []);
 
   const handleTranscriptReady = async (
     transcript: string,
     source: 'voice' | 'typed',
-    details?: { alternatives?: string[]; latencyMs?: number; engine?: string }
+    details?: {
+      alternatives?: string[];
+      latencyMs?: number;
+      engine?: string;
+      timings?: VoiceLogTimings;
+    }
   ) => {
     setVoiceSheetVisible(false);
     setTranscriptSource(source);
@@ -267,6 +294,12 @@ function HomeContent() {
       timeZone: 'Asia/Kolkata',
       keywordMap,
     });
+
+    const currentTimings: VoiceLogTimings = {
+      ...(details?.timings || {}),
+      parsed: Date.now(),
+    };
+    activeTimingsRef.current = currentTimings;
 
     setCurrentTranscript(effectiveTranscript);
 
@@ -281,6 +314,7 @@ function HomeContent() {
           final_saved_json: null,
           corrected: false,
           latency_ms: details?.latencyMs || 0,
+          timings_json: JSON.stringify(currentTimings),
         });
         logId = entry?.id || null;
       } catch (err) {
@@ -315,6 +349,12 @@ function HomeContent() {
       });
 
       if (logId) {
+        const nowSaved = Date.now();
+        const savedTimings: VoiceLogTimings = {
+          ...(activeTimingsRef.current || {}),
+          saved: nowSaved,
+          ui_updated: nowSaved,
+        };
         const finalJson = JSON.stringify({
           type: parsed.type,
           amountPaise: parsed.amountPaise,
@@ -322,7 +362,7 @@ function HomeContent() {
           note: parsed.note,
           occurredOn: parsed.date,
         });
-        await updateVoiceLogSaved(logId, finalJson, false);
+        await updateVoiceLogSaved(logId, finalJson, false, JSON.stringify(savedTimings));
         setActiveVoiceLogId(null);
       }
 
@@ -415,6 +455,12 @@ function HomeContent() {
     }
 
     if (activeVoiceLogId) {
+      const nowSaved = Date.now();
+      const savedTimings: VoiceLogTimings = {
+        ...(activeTimingsRef.current || {}),
+        saved: nowSaved,
+        ui_updated: nowSaved,
+      };
       const finalJson = JSON.stringify({
         type: data.type,
         amountPaise: data.amountPaise,
@@ -422,7 +468,12 @@ function HomeContent() {
         note: data.note,
         occurredOn: data.occurredOn,
       });
-      await updateVoiceLogSaved(activeVoiceLogId, finalJson, Boolean(data.corrected));
+      await updateVoiceLogSaved(
+        activeVoiceLogId,
+        finalJson,
+        Boolean(data.corrected),
+        JSON.stringify(savedTimings)
+      );
       setActiveVoiceLogId(null);
     }
 
@@ -639,6 +690,7 @@ function HomeContent() {
       <VoiceSheet
         visible={voiceSheetVisible}
         initialMode={voiceSheetMode}
+        tapTimestamp={voiceTapTime}
         onTranscriptReady={handleTranscriptReady}
         onClose={() => setVoiceSheetVisible(false)}
       />

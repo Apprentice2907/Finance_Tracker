@@ -59,18 +59,20 @@ interface AppState {
   whisperLanguage: string;
   autoAddMode: import('../domain/autoAdd').AutoAddMode;
   autoAddLimitPaise: number;
+  speechSilenceMs: number;
 
   init: () => Promise<void>;
   refresh: () => Promise<void>;
   setAutoAddMode: (mode: import('../domain/autoAdd').AutoAddMode) => Promise<void>;
   setAutoAddLimitPaise: (limitPaise: number) => Promise<void>;
+  setSpeechSilenceMs: (ms: number) => Promise<void>;
   toggleKeepVoiceLog: (val: boolean) => Promise<void>;
   togglePreferOnDevice: (val: boolean) => Promise<void>;
   setVoiceEngine: (engine: string) => Promise<void>;
   setWhisperModel: (model: string) => Promise<void>;
   setWhisperLanguage: (lang: string) => Promise<void>;
   addVoiceLog: (input: CreateVoiceLogInput) => Promise<VoiceLogEntry | null>;
-  updateVoiceLogSaved: (id: string, finalSavedJson: string, corrected: boolean) => Promise<void>;
+  updateVoiceLogSaved: (id: string, finalSavedJson: string, corrected: boolean, timingsJson?: string | null) => Promise<void>;
   clearVoiceLogs: () => Promise<void>;
   getVoiceLogs: (limit?: number) => Promise<VoiceLogEntry[]>;
   getInsightsData: (period: 'week' | 'month') => Promise<InsightsData>;
@@ -141,6 +143,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   whisperLanguage: 'en',
   autoAddMode: 'sure',
   autoAddLimitPaise: 200000,
+  speechSilenceMs: 1000,
 
   init: async () => {
     try {
@@ -166,6 +169,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const repo = getRepository();
     await repo.setSetting('auto_add_limit_paise', String(limitPaise));
     set({ autoAddLimitPaise: limitPaise });
+  },
+
+  setSpeechSilenceMs: async (ms: number) => {
+    const repo = getRepository();
+    await repo.setSetting('speech_silence_ms', String(ms));
+    set({ speechSilenceMs: ms });
   },
 
   refresh: async () => {
@@ -217,6 +226,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         whisperLanguageSetting,
         autoAddModeSetting,
         autoAddLimitSetting,
+        speechSilenceSetting,
       ] = await Promise.all([
         repo.getTotalsByPeriod(startOfMonth, endOfMonth),
         repo.getTotalsByPeriod(today, today),
@@ -228,6 +238,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         repo.getSetting('whisper_language'),
         repo.getSetting('auto_add_mode'),
         repo.getSetting('auto_add_limit_paise'),
+        repo.getSetting('speech_silence_ms'),
       ]);
 
       const keepVoiceLog = keepVoiceLogSetting !== '0';
@@ -237,6 +248,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const whisperLanguage = whisperLanguageSetting || 'en';
       const autoAddMode = (autoAddModeSetting as import('../domain/autoAdd').AutoAddMode) || 'sure';
       const autoAddLimitPaise = autoAddLimitSetting ? parseInt(autoAddLimitSetting, 10) : 200000;
+      const speechSilenceMs = speechSilenceSetting ? parseInt(speechSilenceSetting, 10) : 1000;
 
       let changeVsLastMonthPercent: number | null = null;
       if (previousMonthTotals.totalExpensePaise > 0) {
@@ -260,6 +272,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         whisperLanguage,
         autoAddMode,
         autoAddLimitPaise,
+        speechSilenceMs,
         error: null,
       });
     } catch (err: any) {
@@ -473,10 +486,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     return repo.addVoiceLog(input);
   },
 
-  updateVoiceLogSaved: async (id: string, finalSavedJson: string, corrected: boolean) => {
+  updateVoiceLogSaved: async (
+    id: string,
+    finalSavedJson: string,
+    corrected: boolean,
+    timingsJson?: string | null
+  ) => {
     if (!get().keepVoiceLog) return;
     const repo = getRepository();
-    await repo.updateVoiceLogSaved(id, finalSavedJson, corrected);
+    await repo.updateVoiceLogSaved(id, finalSavedJson, corrected, timingsJson);
   },
 
   clearVoiceLogs: async () => {

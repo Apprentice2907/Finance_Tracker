@@ -31,15 +31,22 @@ import { MicIcon } from './icons';
 import { SpeechService, SpeechState } from '../speech/SpeechService';
 import { ExpoSpeechService, createSpeechService, WhisperModelId } from '../speech';
 import { useAppStore } from '../state/useAppStore';
+import { VoiceLogTimings } from '../domain/types';
 
 interface VoiceSheetProps {
   visible: boolean;
   initialMode?: 'voice' | 'typed';
+  tapTimestamp?: number;
   onClose: () => void;
   onTranscriptReady: (
     transcript: string,
     source: 'voice' | 'typed',
-    details?: { alternatives?: string[]; latencyMs?: number; engine?: string }
+    details?: {
+      alternatives?: string[];
+      latencyMs?: number;
+      engine?: string;
+      timings?: VoiceLogTimings;
+    }
   ) => void;
   speechService?: SpeechService;
 }
@@ -47,6 +54,7 @@ interface VoiceSheetProps {
 const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
   visible,
   initialMode = 'voice',
+  tapTimestamp,
   onClose,
   onTranscriptReady,
   speechService,
@@ -99,23 +107,39 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
   useEffect(() => {
     let isCancelled = false;
     const startTime = Date.now();
+    const timings: VoiceLogTimings = {
+      tap: tapTimestamp || startTime,
+    };
+
     if (!isTypingMode) {
       effectiveService
         .startListening({
           onStateChange: (state) => {
-            if (!isCancelled) setSpeechState(state);
+            if (!isCancelled) {
+              if (state === 'listening' && !timings.recognizer_started) {
+                timings.recognizer_started = Date.now();
+              }
+              setSpeechState(state);
+            }
           },
           onPartialTranscript: (text) => {
-            if (!isCancelled) setPartialTranscript(text);
+            if (!isCancelled) {
+              if (!timings.first_partial) {
+                timings.first_partial = Date.now();
+              }
+              setPartialTranscript(text);
+            }
           },
           onFinalTranscript: (text, details) => {
             if (!isCancelled) {
+              timings.final_result = Date.now();
               setSpeechState('idle');
               const latencyMs = details?.latencyMs ?? (Date.now() - startTime);
               onTranscriptReady(text, 'voice', {
                 alternatives: details?.alternatives || [text],
                 latencyMs,
                 engine: details?.engine || effectiveService.engineName || 'expo',
+                timings,
               });
             }
           },
@@ -138,7 +162,7 @@ const VoiceSheetContent: React.FC<VoiceSheetProps> = ({
       isCancelled = true;
       effectiveService.abort().catch(() => {});
     };
-  }, [isTypingMode, effectiveService, onTranscriptReady]);
+  }, [isTypingMode, effectiveService, onTranscriptReady, tapTimestamp]);
 
   // Pulse animation while listening
   useEffect(() => {

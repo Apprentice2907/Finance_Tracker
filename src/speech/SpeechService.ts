@@ -35,4 +35,5 @@ export interface SpeechService {
   stopListening(): Promise<void>;
   abort(): Promise<void>;
   getState(): SpeechState;
+  warmup?(): Promise<void>;
 }

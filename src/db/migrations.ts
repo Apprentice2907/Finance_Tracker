@@ -250,6 +250,24 @@ export async function migrateDatabase(db: DatabaseAdapter): Promise<void> {
       throw error;
     }
   }
+
+  if (currentVersion < 6) {
+    // Migration v6: Add timings_json column to voice_log if missing
+    await db.execAsync('BEGIN TRANSACTION;');
+    try {
+      const voiceLogColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(voice_log);');
+      const hasTimings = voiceLogColumns.some((col) => col.name === 'timings_json');
+      if (!hasTimings) {
+        await db.execAsync('ALTER TABLE voice_log ADD COLUMN timings_json TEXT;');
+      }
+      await db.execAsync(`PRAGMA user_version = 6;`);
+      await db.execAsync('COMMIT;');
+    } catch (error) {
+      await db.execAsync('ROLLBACK;');
+      throw error;
+    }
+  }
 }
+
 
 
