@@ -2,7 +2,36 @@
 
 All notable changes to the Wini project will be documented in this file.
 
-## [Voice Accuracy Upgrade v1] - 2026-10-04
+## [Design Upgrade: Step 1 (Hero, Charts, Tokens & Restructure)] - 2026-10-07
+
+### Added
+- **PART 0: Layout Fix (`layout-fix-v1`)**:
+  - Wrapped app in `SafeAreaProvider` with dynamic top/bottom insets and status bar theming.
+  - Safe-area aware `Screen` component applied to all routes in `app/`.
+  - Floating bottom navigation with 48px touch targets and full clearance over Android 3-button and gesture navigation bars.
+  - Sized, keyboard-safe `BottomSheet` and modals with pinned action buttons and hardware back button dismissal.
+  - Pure microcopy helpers with 20 unit test cases: `pluralize`, `formatRelativeDate`, `formatChange`, `shouldShowBackupReminder`.
+  - Layout diagnostics card in Component Gallery displaying window size, font scale, and insets.
+- **PART 1 (a): Design Tokens & UI Kit Components (`ui-step1-a`)**:
+  - Implemented `HeroCard` (Cosmos silk textured hero, `PillSelector`, eye privacy toggle, net cashflow, dual `GlassChip`).
+  - Implemented `PillSelector` (white, glass, surface2 variants) and `GlassChip`.
+  - Implemented `CategoryIcon` (Block squircle, Glass frosted pill, and Plain glyph variants for 10 categories).
+  - Implemented `CategoryTile` (2-column grid tiles with vector squircle, percentage badge, and amount).
+  - Implemented hand-crafted SVG `BarChart` with 5-week buckets, zero stubs, and selected bar gradient (`#DCE4FF` → `#7E96FF` → `#5B5BF0`).
+  - Implemented SVG `DonutChart` with 3-column legend, percentage breakdown, and segment selection.
+  - Handled responsive geometry and chart maths in `chartGeometry.ts`.
+- **PART 1 (b): Database Migration v5 & Emoji Elimination (`ui-step1-b`)**:
+  - Added SQLite migration v5 with `categories.icon` column and automatic backfill from emoji strings to vector icon identifiers (`food`, `transport`, `shopping`, `bills`, `health`, `fun`, `education`, `salary`, `income`, `other`).
+  - Completely purged emoji icons and emoji characters from all UI strings and screens.
+  - Added automated `emojiScan.test.ts` scanning all `.tsx` files to guarantee zero emoji regression.
+- **PART 1 (c): Home Restructure (`ui-step1-c`)**:
+  - Restructured Home into 5 clean visual sections: 1. `HeroCard`, 2. Cashflow `BarChart` with Expenses/Income toggle & Month/Week picker, 3. Category breakdown `DonutChart` with 3-column legend & shared toggle, 4. Recent 5 transactions with "View all" lime button, 5. `FloatingNav` (docked, centre mic).
+  - Implemented pure domain helpers in `src/domain/homeHelpers.ts` (`getWeeklyBucketsForMonth`, `getDailyBucketsForWeek`, `calculateHomeTotals`, `getDonutBreakdownData`) with 15 unit test cases.
+- **PART 1 (d): Component Gallery Additions & Documentation (`ui-step1-d`)**:
+  - Updated `ComponentGalleryScreen` (`app/gallery.tsx`) with dedicated showcases for `HeroCard`, `PillSelector`, `GlassChip`, `CategoryIcon` (all 3 variants & sizes), `BarChart` (weekly buckets & gradients), and `DonutChart` (3-column legend).
+  - Updated architecture and UI Kit documentation in `docs/HOW_IT_WORKS.md` and `CHANGELOG.md`.
+
+---
 
 ### Added
 - **PART A: Measure (Voice Lab & Correction Logging)**:

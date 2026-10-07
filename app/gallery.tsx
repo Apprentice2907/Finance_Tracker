@@ -15,12 +15,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  Screen,
   Card,
   Button,
   Chip,
   ListRow,
-  SectionHeader,
   AmountText,
   BottomSheet,
   EmptyState,
@@ -39,6 +37,9 @@ import {
   BarChart,
   CashflowLineChart,
   SemicircleGauge,
+  HeroCard,
+  PillSelector,
+  GlassChip,
   type NavTabKey,
 } from '../src/ui/kit';
 import { nightColors, pocketColors, categoryColors, spacing, typography, radii } from '../src/ui/tokens';
@@ -71,6 +72,9 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
   const [buttonLoading, setButtonLoading] = useState(false);
   const [keypadValue, setKeypadValue] = useState('');
   const [activeNavTab, setActiveNavTab] = useState<NavTabKey>('home');
+  const [heroHideAmounts, setHeroHideAmounts] = useState(false);
+  const [selectedPill, setSelectedPill] = useState('October 2026');
+  const [activeBarIndex, setActiveBarIndex] = useState<number | undefined>(4);
 
   // ── styles scoped to current localTheme ──────────────────────
   const dyn = StyleSheet.create({
@@ -186,7 +190,58 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
         </View>
       </Card>
 
-      {/* ── 2. AmountText ────────────────────────────────────── */}
+      {/* ── 2. HeroCard (Step 1) ────────────────────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>HeroCard</Text>
+        <Text style={dyn.sectionSub}>Cosmos silk textured hero · PillSelector · GlassChips · Eye toggle</Text>
+      </View>
+      <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md, gap: spacing.md }}>
+        <HeroCard
+          monthLabel={selectedPill}
+          onMonthPress={() => setSelectedPill((p) => (p === 'October 2026' ? 'September 2026' : 'October 2026'))}
+          netCashflowPaise={4250000}
+          incomePaise={8500000}
+          expensePaise={4250000}
+          hideAmounts={heroHideAmounts}
+          onToggleHideAmounts={() => setHeroHideAmounts(!heroHideAmounts)}
+        />
+        <Text style={dyn.stateLabel}>Deficit / Negative Cashflow State</Text>
+        <HeroCard
+          monthLabel="Nov 2026"
+          netCashflowPaise={-1500000}
+          incomePaise={3000000}
+          expensePaise={4500000}
+          hideAmounts={false}
+        />
+      </View>
+
+      {/* ── 3. PillSelector & GlassChip (Step 1) ──────────────── */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <Text style={dyn.sectionTitle}>PillSelector & GlassChip</Text>
+        <Text style={dyn.sectionSub}>White · Glass · Surface2 variants · KPI GlassChips</Text>
+      </View>
+      <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <Text style={dyn.stateLabel}>PillSelector Variants</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md }}>
+          <PillSelector label="White Pill" variant="white" onPress={() => {}} />
+          <PillSelector label="Glass Pill" variant="glass" onPress={() => {}} />
+          <PillSelector label="Surface2 Pill" variant="surface2" onPress={() => {}} />
+          <PillSelector label="No Chevron" variant="surface2" showChevron={false} onPress={() => {}} />
+        </View>
+
+        <View style={dyn.divider} />
+        <Text style={dyn.stateLabel}>GlassChip Variants</Text>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+          <GlassChip label="Income" amountPaise={8500000} type="income" />
+          <GlassChip label="Expense" amountPaise={4250000} type="expense" />
+        </View>
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <GlassChip label="Savings" valueText="₹42,500" type="neutral" />
+          <GlassChip label="Hidden" amountPaise={999900} type="expense" hideAmount />
+        </View>
+      </Card>
+
+      {/* ── 4. AmountText ────────────────────────────────────── */}
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
         <Text style={dyn.sectionTitle}>AmountText</Text>
         <Text style={dyn.sectionSub}>Indian grouping, dimmed decimals, sign, serif in Pocket</Text>
@@ -342,12 +397,30 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
         </View>
       </Card>
 
-      {/* ── 8. CategoryIcon ──────────────────────────────────── */}
+      {/* ── 10. CategoryIcon ─────────────────────────────────── */}
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
         <Text style={dyn.sectionTitle}>CategoryIcon</Text>
-        <Text style={dyn.sectionSub}>Squircle: Night=filled+dark glyph · Pocket=14% tint+colored glyph</Text>
+        <Text style={dyn.sectionSub}>Block (squircle), Glass (frosted pill), Plain (glyph only)</Text>
       </View>
       <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border }}>
+        <Text style={[dyn.stateLabel, { marginBottom: spacing.sm }]}>Variants: Block · Glass · Plain</Text>
+        <View style={{ flexDirection: 'row', gap: spacing.lg, alignItems: 'center', marginBottom: spacing.md }}>
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <CategoryIcon name="food" color={categoryColors.orange} size="md" variant="block" />
+            <Text style={dyn.iconLabel}>Block</Text>
+          </View>
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <CategoryIcon name="food" color={categoryColors.orange} size="md" variant="glass" />
+            <Text style={dyn.iconLabel}>Glass</Text>
+          </View>
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <CategoryIcon name="food" color={categoryColors.orange} size="md" variant="plain" />
+            <Text style={dyn.iconLabel}>Plain</Text>
+          </View>
+        </View>
+
+        <View style={dyn.divider} />
+        <Text style={[dyn.stateLabel, { marginBottom: spacing.sm }]}>All 10 Categories</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
           {[
             { name: 'food', color: categoryColors.orange },
@@ -367,6 +440,7 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
             </View>
           ))}
         </View>
+
         <View style={dyn.divider} />
         <Text style={dyn.stateLabel}>Sizes: sm · md · lg</Text>
         <View style={{ flexDirection: 'row', gap: spacing.lg, alignItems: 'flex-end' }}>
@@ -531,42 +605,47 @@ function GalleryContent({ localTheme }: { localTheme: 'night' | 'pocket' }) {
         />
       </Card>
 
-      {/* ── 18. Charts ───────────────────────────────────────── */}
+      {/* ── 18. Charts (Step 1 SVG) ─────────────────────────── */}
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
         <Text style={dyn.sectionTitle}>Charts (SVG)</Text>
-        <Text style={dyn.sectionSub}>Donut, Bar, CashflowLine, SemicircleGauge</Text>
+        <Text style={dyn.sectionSub}>Donut (3-column legend), Bar (weekly buckets, gradient), CashflowLine, Gauge</Text>
       </View>
       <Card variant="surface" style={{ marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: C.surface, borderColor: C.border, alignItems: 'center' }}>
-        <Text style={[dyn.stateLabel, { alignSelf: 'flex-start', marginBottom: spacing.sm }]}>DonutChart</Text>
+        <Text style={[dyn.stateLabel, { alignSelf: 'flex-start', marginBottom: spacing.sm }]}>DonutChart (3-Column Legend)</Text>
         <DonutChart
           size={180}
+          centerAmount="₹35,200"
+          centerTitle="Total Spent"
+          showLegend
           segments={[
-            { key: 'food', label: 'Food', amountPaise: 400000, color: categoryColors.orange },
-            { key: 'transport', label: 'Transport', amountPaise: 250000, color: categoryColors.blue },
-            { key: 'shopping', label: 'Shopping', amountPaise: 150000, color: categoryColors.violet },
+            { key: 'food', label: 'Food', amountPaise: 1450000, color: categoryColors.orange },
+            { key: 'transport', label: 'Transport', amountPaise: 820000, color: categoryColors.blue },
+            { key: 'shopping', label: 'Shopping', amountPaise: 650000, color: categoryColors.violet },
+            { key: 'bills', label: 'Bills', amountPaise: 400000, color: categoryColors.cyan },
+            { key: 'fun', label: 'Fun', amountPaise: 200000, color: categoryColors.mint },
           ]}
         />
         <View style={dyn.divider} />
         
-        <Text style={[dyn.stateLabel, { alignSelf: 'flex-start', marginBottom: spacing.sm }]}>BarChart</Text>
+        <Text style={[dyn.stateLabel, { alignSelf: 'flex-start', marginBottom: spacing.sm }]}>BarChart (5-Week Buckets, Selected Bar Gradient)</Text>
         <BarChart
-          width={300}
-          height={160}
+          width={width - spacing.lg * 4}
+          height={180}
+          selectedIndex={activeBarIndex}
+          onSelectIndex={(i) => setActiveBarIndex(i)}
           data={[
-            { key: 'm', label: 'Mon', amountPaise: 120000 },
-            { key: 't', label: 'Tue', amountPaise: 55000 },
-            { key: 'w', label: 'Wed', amountPaise: 240000 },
-            { key: 'th', label: 'Thu', amountPaise: 40000 },
-            { key: 'f', label: 'Fri', amountPaise: 380000 },
-            { key: 'sa', label: 'Sat', amountPaise: 190000 },
-            { key: 'su', label: 'Sun', amountPaise: 0 },
+            { key: 'w1', label: '1-7', amountPaise: 1250000 },
+            { key: 'w2', label: '8-14', amountPaise: 450000 },
+            { key: 'w3', label: '15-21', amountPaise: 1980000 },
+            { key: 'w4', label: '22-28', amountPaise: 620000 },
+            { key: 'w5', label: '29-31', amountPaise: 2350000 },
           ]}
         />
         <View style={dyn.divider} />
         
         <Text style={[dyn.stateLabel, { alignSelf: 'flex-start', marginBottom: spacing.sm }]}>CashflowLineChart</Text>
         <CashflowLineChart
-          width={300}
+          width={width - spacing.lg * 4}
           height={160}
           data={[
             { key: '1', label: '1', amountPaise: 15000 },

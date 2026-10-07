@@ -165,19 +165,29 @@ Wini's visual building blocks take only props and tokens—they contain zero bus
 
 | Component | File | What it controls |
 |---|---|---|
-| `<Screen />` | `src/ui/kit/Screen.tsx` | SafeArea bounds, status bar theme, and optional ScrollView wrapper |
+| `<Screen />` | `src/ui/kit/Screen.tsx` | SafeArea bounds, status bar theme, keyboard handling, and bottom inset offsets |
+| `<HeroCard />` | `src/ui/kit/HeroCard.tsx` | Top cosmos silk textured card with PillSelector, eye privacy toggle, net cashflow, and GlassChips |
+| `<PillSelector />` | `src/ui/kit/PillSelector.tsx` | Rounded pill dropdown selector (`white`, `glass`, `surface2`) |
+| `<GlassChip />` | `src/ui/kit/GlassChip.tsx` | Frosted glass KPI chip with arrow badge, label, and formatted amount |
 | `<Card />` | `src/ui/kit/Card.tsx` | Container variants (`surface`, `elevated`, `glass`, `outlined`) & paddings |
+| `<TexturedCard />` | `src/ui/kit/TexturedCard.tsx` | Hardware-rendered textured containers (aurora, nebula, cosmos, ember, midnight) |
 | `<Button />` | `src/ui/kit/Button.tsx` | Actions (`primary`, `secondary`, `ghost`, `danger`), sizes (`sm`, `md`, `lg`), loading spinner & disabled states |
 | `<Chip />` | `src/ui/kit/Chip.tsx` | Category tags, filter pills, custom tint badges, and selected states |
-| `<ListRow />` | `src/ui/kit/ListRow.tsx` | List items with left icons/emojis, title, subtitle, right value, and chevron |
+| `<CategoryIcon />` | `src/ui/kit/CategoryIcon.tsx` | Squircle / frosted glass / plain vector icons for all 10 standard categories |
+| `<CategoryTile />` | `src/ui/kit/CategoryTile.tsx` | 2-column breakdown tiles with vector squircle, percentage badge, and amount |
+| `<TransactionRow />` | `src/ui/kit/TransactionRow.tsx` | Flat transaction item with category squircle, merchant/note, date, and signed amount |
+| `<ListRow />` | `src/ui/kit/ListRow.tsx` | Settings list items with left icon/glyph, title, subtitle, right value, and chevron |
 | `<SectionHeader />` | `src/ui/kit/SectionHeader.tsx` | Screen section titles, optional subtitles, and action links ("See All", "Edit") |
-| `<AmountText />` | `src/ui/kit/AmountText.tsx` | Indian numbering system (`₹1,50,000`), income (+)/expense (−) color styling, and typography sizes |
+| `<AmountText />` | `src/ui/kit/AmountText.tsx` | Indian numbering system (`₹1,50,000`), dimmed decimals, and type styling |
 | `<BottomSheet />` | `src/ui/kit/BottomSheet.tsx` | Accessible slide-up modal with drag handle, title bar, and touch backdrop dismissal |
 | `<EmptyState />` | `src/ui/kit/EmptyState.tsx` | Zero-state illustrations with title, description, and primary call-to-action |
 | `<ErrorBanner />` | `src/ui/kit/ErrorBanner.tsx` | Actionable error alert with retry and dismiss handlers |
 | `<Skeleton />` | `src/ui/kit/Skeleton.tsx` | Animated pulsing loading placeholders for data loading |
 | `<SegmentedControl />` | `src/ui/kit/SegmentedControl.tsx` | Period switches (`Week \| Month \| Quarter \| Year`) and multi-tab toggles |
 | `<IconButton />` | `src/ui/kit/IconButton.tsx` | 48px touch targets for navigation icons, mic triggers, and action bar buttons |
+| `<FloatingNav />` | `src/ui/kit/FloatingNav.tsx` | Docked floating bottom tab pill with 5 tabs and elevated centre mic button |
+| `<BarChart />` | `src/ui/kit/charts/BarChart.tsx` | 5-week bucketed SVG bar chart with gradient fill, zero stubs, and interactive touch |
+| `<DonutChart />` | `src/ui/kit/charts/DonutChart.tsx` | SVG ring chart with 3-column legend, percentage breakdown, and selection |
 
 ### Step 3: Verify in the Component Gallery
 To inspect all components and states at once without navigating multiple screens:
