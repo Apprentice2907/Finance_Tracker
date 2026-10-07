@@ -22,4 +22,5 @@ export * from './PillSelector';
 export * from './GlassChip';
 export * from './HeroCard';
 export * from './charts';
+export * from './Snackbar';
 

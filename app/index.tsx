@@ -29,6 +29,7 @@ import { VoiceSheet } from '../src/ui/VoiceSheet';
 import { ConfirmSheet } from '../src/ui/ConfirmSheet';
 import { ParseResult } from '../src/parser';
 import { processComposerInput } from '../src/domain/composerPipeline';
+import { decideAddAction } from '../src/domain/autoAdd';
 import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { useRouter } from 'expo-router';
 import { ExpoSpeechService } from '../src/speech/ExpoSpeechService';
@@ -44,6 +45,7 @@ import {
   SectionHeader,
   BottomSheet,
   FloatingNav,
+  Snackbar,
   type NavTabKey,
 } from '../src/ui/kit';
 import {
@@ -117,6 +119,8 @@ function HomeContent() {
     showBanner,
     keepVoiceLog,
     voiceEngine,
+    autoAddMode,
+    autoAddLimitPaise,
     addVoiceLog,
     updateVoiceLogSaved,
   } = useAppStore();
@@ -125,6 +129,12 @@ function HomeContent() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>('expense');
+  const [snackbarState, setSnackbarState] = useState<{
+    visible: boolean;
+    message: string;
+    txId: string;
+    txData: TransactionWithCategory;
+  } | null>(null);
 
   // Month selection (YYYY-MM)
   const currentMonthKey = useMemo(() => {
@@ -279,8 +289,79 @@ function HomeContent() {
     }
     setActiveVoiceLogId(logId);
 
+    const decision = decideAddAction(
+      parsed,
+      {
+        autoAddMode,
+        autoAddLimitPaise,
+      },
+      new Date()
+    );
+
+    if (decision === 'auto') {
+      const foundCat =
+        categories.find(
+          (c) => c.name.toLowerCase() === parsed.category?.toLowerCase()
+        ) || categories[0];
+
+      const savedTx = await addTransaction({
+        type: parsed.type,
+        amount_paise: parsed.amountPaise!,
+        category_id: foundCat ? foundCat.id : '',
+        note: parsed.note,
+        occurred_on: parsed.date,
+        source,
+        raw_text: effectiveTranscript,
+      });
+
+      if (logId) {
+        const finalJson = JSON.stringify({
+          type: parsed.type,
+          amountPaise: parsed.amountPaise,
+          categoryId: foundCat ? foundCat.id : '',
+          note: parsed.note,
+          occurredOn: parsed.date,
+        });
+        await updateVoiceLogSaved(logId, finalJson, false);
+        setActiveVoiceLogId(null);
+      }
+
+      // Haptic feedback on auto-save
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
+      const catName = foundCat?.name || 'General';
+      const relDate = formatRelativeDate(parsed.date);
+      const msg = `Added ${formatRupees(parsed.amountPaise!)} · ${catName} · ${relDate}`;
+
+      const fullTx: TransactionWithCategory = {
+        id: savedTx.id,
+        type: savedTx.type,
+        amount_paise: savedTx.amount_paise,
+        category_id: savedTx.category_id,
+        category_name: foundCat?.name,
+        category_icon: foundCat?.icon,
+        category_color: foundCat?.color,
+        note: savedTx.note,
+        occurred_on: savedTx.occurred_on,
+        source: savedTx.source,
+        raw_text: savedTx.raw_text,
+        device_id: savedTx.device_id,
+        created_at: savedTx.created_at,
+        updated_at: savedTx.updated_at,
+        deleted_at: savedTx.deleted_at,
+      };
+
+      setSnackbarState({
+        visible: true,
+        message: msg,
+        txId: savedTx.id,
+        txData: fullTx,
+      });
+      return;
+    }
+
     // If confidence is low or amount could not be parsed, route directly to edit form pre-filled
-    if (parsed.confidence < 0.6 || !parsed.amountPaise) {
+    if (decision === 'edit' || parsed.confidence < 0.6 || !parsed.amountPaise) {
       showBanner('Low confidence — please review and complete details');
       const foundCat = categories.find(
         (c) => c.name.toLowerCase() === parsed.category?.toLowerCase()
@@ -626,6 +707,30 @@ function HomeContent() {
           setModalVisible(false);
           setEditingTransaction(null);
         }}
+      />
+
+      {/* ── Auto-Add 8s Undo/Edit Snackbar ───────────────────────── */}
+      <Snackbar
+        visible={!!snackbarState?.visible}
+        message={snackbarState?.message || ''}
+        durationMs={8000}
+        onUndo={async () => {
+          if (snackbarState) {
+            await deleteTransaction(snackbarState.txId);
+            setSnackbarState(null);
+            showBanner('Transaction undone');
+          }
+        }}
+        onEdit={() => {
+          if (snackbarState) {
+            const tx = snackbarState.txData;
+            setSnackbarState(null);
+            setEditingTransaction(tx);
+            setModalDefaultType(tx.type);
+            setModalVisible(true);
+          }
+        }}
+        onDismiss={() => setSnackbarState(null)}
       />
     </Screen>
   );

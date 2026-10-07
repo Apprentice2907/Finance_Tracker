@@ -51,11 +51,15 @@ function SettingsContent() {
     voiceEngine,
     whisperModel,
     whisperLanguage,
+    autoAddMode,
+    autoAddLimitPaise,
     toggleKeepVoiceLog,
     togglePreferOnDevice,
     setVoiceEngine,
     setWhisperModel,
     setWhisperLanguage,
+    setAutoAddMode,
+    setAutoAddLimitPaise,
     clearVoiceLogs,
   } = useAppStore();
   const { mode: themeMode, activeTheme, colors: themeColors, setThemeMode } = useTheme();
@@ -366,6 +370,157 @@ function SettingsContent() {
               <Text style={[styles.engineTabSub, { color: themeColors.textMuted }]}>Light wallet</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Section: Add Behaviour */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Add Behaviour</Text>
+          </View>
+          <Text style={styles.sectionDesc}>
+            Control whether recognized entries are saved automatically or verified first.
+          </Text>
+
+          <View style={styles.engineTabsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.engineTab,
+                { backgroundColor: themeColors.surface2, borderColor: themeColors.border },
+                autoAddMode === 'ask' && [
+                  styles.engineTabActive,
+                  { borderColor: themeColors.accent, backgroundColor: themeColors.surface2 },
+                ],
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setAutoAddMode('ask');
+                showBanner('Add mode: Ask me every time');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.engineTabText,
+                  { color: themeColors.text },
+                  autoAddMode === 'ask' && { color: themeColors.accent, fontWeight: '700' },
+                ]}
+              >
+                Ask every time
+              </Text>
+              <Text style={[styles.engineTabSub, { color: themeColors.textMuted }]}>
+                Always confirm
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.engineTab,
+                { backgroundColor: themeColors.surface2, borderColor: themeColors.border },
+                autoAddMode === 'sure' && [
+                  styles.engineTabActive,
+                  { borderColor: themeColors.accent, backgroundColor: themeColors.surface2 },
+                ],
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setAutoAddMode('sure');
+                showBanner('Add mode: Auto-add when sure');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.engineTabText,
+                  { color: themeColors.text },
+                  autoAddMode === 'sure' && { color: themeColors.accent, fontWeight: '700' },
+                ]}
+              >
+                When sure
+              </Text>
+              <Text style={[styles.engineTabSub, { color: themeColors.textMuted }]}>
+                Auto-add (Default)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.engineTab,
+                { backgroundColor: themeColors.surface2, borderColor: themeColors.border },
+                autoAddMode === 'always' && [
+                  styles.engineTabActive,
+                  { borderColor: themeColors.accent, backgroundColor: themeColors.surface2 },
+                ],
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setAutoAddMode('always');
+                showBanner('Add mode: Always auto-add');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.engineTabText,
+                  { color: themeColors.text },
+                  autoAddMode === 'always' && { color: themeColors.accent, fontWeight: '700' },
+                ]}
+              >
+                Always auto
+              </Text>
+              <Text style={[styles.engineTabSub, { color: themeColors.textMuted }]}>
+                Skip confirm
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Auto-Add Limit Selector (applicable for 'sure' mode) */}
+          {autoAddMode === 'sure' && (
+            <View style={[styles.card, { backgroundColor: themeColors.surface, borderColor: themeColors.border, marginTop: spacing.md }]}>
+              <View style={styles.toggleTextWrap}>
+                <Text style={styles.toggleTitle}>Auto-add limit</Text>
+                <Text style={styles.toggleSubtitle}>
+                  Entries under this amount are auto-added when confidence is 90% or higher. Larger amounts show the confirm sheet.
+                </Text>
+              </View>
+              <View style={styles.limitPillRow}>
+                {[
+                  { label: '₹500', value: 50000 },
+                  { label: '₹1,000', value: 100000 },
+                  { label: '₹2,000', value: 200000 },
+                  { label: '₹5,000', value: 500000 },
+                  { label: '₹10,000', value: 1000000 },
+                ].map((lim) => {
+                  const isSelected = autoAddLimitPaise === lim.value;
+                  return (
+                    <TouchableOpacity
+                      key={lim.value}
+                      style={[
+                        styles.limitPill,
+                        { backgroundColor: themeColors.surface2, borderColor: themeColors.border },
+                        isSelected && { backgroundColor: themeColors.accent, borderColor: themeColors.accent },
+                      ]}
+                      onPress={() => {
+                        Haptics.selectionAsync().catch(() => {});
+                        setAutoAddLimitPaise(lim.value);
+                        showBanner(`Auto-add limit set to ${lim.label}`);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.limitPillText,
+                          { color: themeColors.text },
+                          isSelected && { color: colors.black, fontWeight: '700' },
+                        ]}
+                      >
+                        {lim.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Section: Voice & Accuracy */}
@@ -1507,5 +1662,24 @@ const styles = StyleSheet.create({
   langBtnTextActive: {
     color: colors.primary,
     fontWeight: '700',
+  },
+  limitPillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  limitPill: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  limitPillText: {
+    fontFamily: typography.bodyMedium,
+    fontSize: typography.sizeSm,
   },
 });
