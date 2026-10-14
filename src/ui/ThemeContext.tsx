@@ -39,18 +39,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Load saved theme preference on start
   useEffect(() => {
     let active = true;
-    const repo = getRepository();
-
-    repo
-      .getSetting('theme_mode', 'system')
-      .then((savedMode) => {
-        if (active && (savedMode === 'system' || savedMode === 'night' || savedMode === 'pocket')) {
-          setModeState(savedMode as ThemeMode);
-        }
-      })
-      .catch((err) => {
-        console.warn('Failed to load theme setting:', err);
-      });
+    try {
+      const repo = getRepository();
+      repo
+        .getSetting('theme_mode', 'system')
+        .then((savedMode) => {
+          if (active && (savedMode === 'system' || savedMode === 'night' || savedMode === 'pocket')) {
+            setModeState(savedMode as ThemeMode);
+          }
+        })
+        .catch((err) => {
+          console.warn('Failed to load theme setting:', err);
+        });
+    } catch {
+      // Database initializing; fallback to default theme mode
+    }
 
     return () => {
       active = false;

@@ -105,6 +105,14 @@ function NavigationShell() {
             href: null,
           }}
         />
+        <Tabs.Screen
+          name="preview"
+          options={{
+            title: 'Figma Preview',
+            tabBarStyle: { display: 'none' },
+            tabBarIcon: ({ color }) => <WalletIcon size={22} color={color} />,
+          }}
+        />
       </Tabs>
     </View>
   );
@@ -120,18 +128,19 @@ export default function RootLayout() {
   });
 
   const init = useAppStore((state) => state.init);
+  const isInitialized = useAppStore((state) => state.isInitialized);
 
   useEffect(() => {
     init().catch(console.error);
   }, [init]);
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded && isInitialized) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, isInitialized]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !isInitialized) {
     return null;
   }
 

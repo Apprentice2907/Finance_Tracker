@@ -32,10 +32,10 @@ export type TextureKey =
   | 'cosmos_silk_dark';
 
 export const TEXTURE_ASSETS: Record<string, any> = {
-  'cosmos-silk': require('../../../assets/textures/cosmos-silk.jpg'),
-  'cosmos-silk-dark': require('../../../assets/textures/cosmos-silk-dark.jpg'),
-  cosmos_silk: require('../../../assets/textures/cosmos-silk.jpg'),
-  cosmos_silk_dark: require('../../../assets/textures/cosmos-silk-dark.jpg'),
+  'cosmos-silk': require('../../../assets/textures/cosmos.jpg'),
+  'cosmos-silk-dark': require('../../../assets/textures/cosmos.jpg'),
+  cosmos_silk: require('../../../assets/textures/cosmos.jpg'),
+  cosmos_silk_dark: require('../../../assets/textures/cosmos.jpg'),
   cosmos: require('../../../assets/textures/cosmos.jpg'),
   ember: require('../../../assets/textures/ember.jpg'),
   midnight: require('../../../assets/textures/midnight.jpg'),
